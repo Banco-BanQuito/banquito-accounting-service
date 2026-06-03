@@ -49,5 +49,9 @@ build/
 Thumbs.db
 desktop.ini
 
+### Claude Code memory (no debe subirse a commits) ###
+memory/
+.claude/
+
 ### Docker ###
 docker-compose.override.yml
