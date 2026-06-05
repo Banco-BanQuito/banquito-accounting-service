@@ -24,7 +24,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Cada test corre en su propia transacción y se revierte al terminar. */
 @SpringBootTest
 @Transactional
 class AccountingServiceTest {
@@ -38,7 +37,6 @@ class AccountingServiceTest {
     @Autowired
     private AccountingAccountRepository accountRepository;
 
-    /** Depósito balanceado: DÉBITO Bóveda (1.1.0.02) / CRÉDITO Ahorros (2.1.0.01). */
     private JournalEntryRequest depositoBalanceado(String uuid) {
         return new JournalEntryRequest(uuid, "Depósito ventanilla", null, List.of(
                 new JournalEntryLineRequest("1.1.0.02", MovementType.DEBITO, new BigDecimal("500.00"), "DEP-001"),
@@ -111,9 +109,8 @@ class AccountingServiceTest {
 
     @Test
     void eodNoCierraSiNoCuadra() {
-        // Forzamos un descuadre alterando directamente un saldo (escenario que la API no permite).
-        AccountingAccount boveda = accountRepository.findByCode("1.1.0.02").orElseThrow();
-        boveda.setBalance(boveda.getBalance().add(new BigDecimal("999.99")));
+        AccountingAccount boveda = accountRepository.findById("1.1.0.02").orElseThrow();
+        boveda.setCurrentBalance(boveda.getCurrentBalance().add(new BigDecimal("999.99")));
         accountRepository.save(boveda);
 
         assertThatThrownBy(() -> endOfDayService.runEndOfDay(new EodRequest("system", null)))

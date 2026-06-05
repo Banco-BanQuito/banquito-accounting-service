@@ -5,7 +5,6 @@ import ec.edu.espe.banquito.accountservice.repository.AccountingParameterReposit
 import java.time.LocalDate;
 import org.springframework.stereotype.Service;
 
-/** Acceso a los parámetros operativos del servicio contable. */
 @Service
 public class ParameterService {
 
@@ -17,17 +16,18 @@ public class ParameterService {
         this.parameterRepository = parameterRepository;
     }
 
-    /** Fecha contable activa del banco. Si no está configurada, usa la fecha de hoy. */
     public LocalDate getActiveContableDate() {
         return parameterRepository.findById(FECHA_CONTABLE_ACTIVA)
                 .map(p -> LocalDate.parse(p.getParamValue()))
                 .orElse(LocalDate.now());
     }
 
-    /** Avanza la fecha contable activa a la fecha indicada (usado por el cierre EOD). */
     public void setActiveContableDate(LocalDate date) {
-        AccountingParameter param = parameterRepository.findById(FECHA_CONTABLE_ACTIVA)
-                .orElseGet(() -> new AccountingParameter(FECHA_CONTABLE_ACTIVA, date.toString()));
+        AccountingParameter param = parameterRepository.findById(FECHA_CONTABLE_ACTIVA).orElse(null);
+        if (param == null) {
+            param = new AccountingParameter();
+            param.setParamKey(FECHA_CONTABLE_ACTIVA);
+        }
         param.setParamValue(date.toString());
         parameterRepository.save(param);
     }

@@ -7,6 +7,7 @@ import ec.edu.espe.banquito.accountservice.dto.TrialBalanceResponse;
 import ec.edu.espe.banquito.accountservice.exception.EodNotBalancedException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -17,14 +18,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Proceso End-of-Day (cierre de día contable): valida el cuadre total,
- * genera el CSV del Balance de Comprobación y avanza la fecha contable.
- */
 @Service
 public class EndOfDayService {
 
     private static final DateTimeFormatter FILE_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final String BOM = new String(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF}, StandardCharsets.UTF_8);
 
     private final AccountingService accountingService;
     private final ParameterService parameterService;
@@ -53,7 +51,6 @@ public class EndOfDayService {
         }
 
         String reportPath = writeTrialBalanceCsv(contableDate, balance);
-
         LocalDate nextContableDate = contableDate.plusDays(1);
         parameterService.setActiveContableDate(nextContableDate);
 
@@ -85,7 +82,8 @@ public class EndOfDayService {
         try {
             Files.createDirectories(reportsDir);
             Path file = reportsDir.resolve("balance_" + date.format(FILE_DATE) + ".csv");
-            Files.write(file, rows);
+            String content = BOM + String.join("\r\n", rows) + "\r\n";
+            Files.writeString(file, content, StandardCharsets.UTF_8);
             return file.toAbsolutePath().toString();
         } catch (IOException e) {
             throw new UncheckedIOException("No se pudo escribir el CSV del Balance de Comprobación", e);

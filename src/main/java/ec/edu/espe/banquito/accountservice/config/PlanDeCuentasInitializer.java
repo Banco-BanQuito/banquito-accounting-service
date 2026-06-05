@@ -4,29 +4,26 @@ import ec.edu.espe.banquito.accountservice.domain.AccountType;
 import ec.edu.espe.banquito.accountservice.domain.AccountingAccount;
 import ec.edu.espe.banquito.accountservice.repository.AccountingAccountRepository;
 import ec.edu.espe.banquito.accountservice.service.ParameterService;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
-/**
- * Siembra el Plan de Cuentas y la fecha contable inicial SOLO si la BD está vacía.
- * Es idempotente: si la infraestructura (banquito-infra) ya cargó las cuentas,
- * este inicializador no hace nada.
- * <p>
- * Nota: GUIA_BD.html documenta 7 de las 13 cuentas. Esas 7 no cuadran por sí
- * solas (los activos no tienen contrapartida). Para que el Balance de
- * Comprobación cuadre de arranque se agrega una cuenta de PATRIMONIO/Capital
- * (código 3.1.0.01) que compensa los activos iniciales. <strong>ASUNCIÓN</strong>:
- * reemplazar este seed por las 13 cuentas reales cuando banquito-infra las publique.
- */
 @Component
 public class PlanDeCuentasInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(PlanDeCuentasInitializer.class);
+    private static final String PLAN_RESOURCE = "plan-de-cuentas.csv";
     private static final LocalDate FECHA_CONTABLE_INICIAL = LocalDate.of(2026, 5, 30);
 
     private final AccountingAccountRepository accountRepository;
@@ -44,21 +41,57 @@ public class PlanDeCuentasInitializer implements CommandLineRunner {
             log.info("Plan de Cuentas ya cargado ({} cuentas); se omite el seed.", accountRepository.count());
             return;
         }
-
-        List<AccountingAccount> plan = List.of(
-                new AccountingAccount("1.0.0.00", "ACTIVOS", AccountType.ESTRUCTURAL, BigDecimal.ZERO),
-                new AccountingAccount("1.1.0.01", "Banco Central / Cámara", AccountType.DETALLE, new BigDecimal("500000.00")),
-                new AccountingAccount("1.1.0.02", "Bóveda Central", AccountType.DETALLE, new BigDecimal("1000000.00")),
-                new AccountingAccount("2.1.0.01", "Cuentas Ahorros Clientes", AccountType.DETALLE, BigDecimal.ZERO),
-                new AccountingAccount("2.1.0.02", "Cuentas Corrientes Clientes", AccountType.DETALLE, BigDecimal.ZERO),
-                new AccountingAccount("2.2.0.01", "IVA Retenido por Servicios", AccountType.DETALLE, BigDecimal.ZERO),
-                new AccountingAccount("4.1.0.01", "Comisiones Pagos Masivos", AccountType.DETALLE, BigDecimal.ZERO),
-                // ASUNCIÓN (no documentada en la guía): contrapartida de patrimonio que
-                // balancea los activos de apertura. Saldo acreedor => negativo (débito-positivo).
-                new AccountingAccount("3.1.0.01", "Patrimonio / Capital Inicial", AccountType.DETALLE, new BigDecimal("-1500000.00")));
-
+        List<AccountingAccount> plan = readPlanDeCuentas();
         accountRepository.saveAll(plan);
         parameterService.setActiveContableDate(FECHA_CONTABLE_INICIAL);
-        log.info("Plan de Cuentas sembrado: {} cuentas. FECHA_CONTABLE_ACTIVA={}", plan.size(), FECHA_CONTABLE_INICIAL);
+        log.info("Plan de Cuentas sembrado desde {}: {} cuentas. FECHA_CONTABLE_ACTIVA={}",
+                PLAN_RESOURCE, plan.size(), FECHA_CONTABLE_INICIAL);
+    }
+
+    private List<AccountingAccount> readPlanDeCuentas() {
+        List<AccountingAccount> accounts = new ArrayList<>();
+        ClassPathResource resource = new ClassPathResource(PLAN_RESOURCE);
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8))) {
+            String line;
+            int lineNumber = 0;
+            while ((line = reader.readLine()) != null) {
+                lineNumber++;
+                String trimmed = line.strip();
+                if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("code;")) {
+                    continue;
+                }
+                accounts.add(parseLine(trimmed, lineNumber));
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("No se pudo leer el Plan de Cuentas (" + PLAN_RESOURCE + ")", e);
+        }
+        return accounts;
+    }
+
+    private AccountingAccount parseLine(String line, int lineNumber) {
+        String[] f = line.split(";", -1);
+        if (f.length != 6) {
+            throw new IllegalStateException(
+                    "Línea " + lineNumber + " del Plan de Cuentas mal formada (se esperaban 6 campos): " + line);
+        }
+        String code         = f[0].strip();
+        String name         = f[1].strip();
+        AccountType type    = AccountType.valueOf(f[2].strip().toUpperCase());
+        String accountClass = f[3].strip().toUpperCase();
+        String parent       = f[4].strip();
+        BigDecimal opening  = new BigDecimal(f[5].strip());
+
+        boolean isAcreedora = "PASIVO".equals(accountClass) || "INGRESO".equals(accountClass);
+        BigDecimal signedBalance = isAcreedora ? opening.negate() : opening;
+
+        AccountingAccount account = new AccountingAccount();
+        account.setAccountCode(code);
+        account.setName(name);
+        account.setAccountClass(accountClass);
+        account.setAccountType(type);
+        account.setParentAccountCode(parent.isBlank() ? null : parent);
+        account.setCurrentBalance(signedBalance);
+        return account;
     }
 }

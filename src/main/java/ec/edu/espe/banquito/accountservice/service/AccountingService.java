@@ -1,6 +1,7 @@
 package ec.edu.espe.banquito.accountservice.service;
 
 import ec.edu.espe.banquito.accountservice.domain.AccountingAccount;
+import ec.edu.espe.banquito.accountservice.domain.EntryStatus;
 import ec.edu.espe.banquito.accountservice.domain.JournalEntry;
 import ec.edu.espe.banquito.accountservice.domain.JournalEntryLine;
 import ec.edu.espe.banquito.accountservice.domain.MovementType;
@@ -15,11 +16,11 @@ import ec.edu.espe.banquito.accountservice.repository.AccountingAccountRepositor
 import ec.edu.espe.banquito.accountservice.repository.JournalEntryRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Lógica del libro mayor: registro de asientos y Balance de Comprobación. */
 @Service
 public class AccountingService {
 
@@ -35,15 +36,10 @@ public class AccountingService {
         this.parameterService = parameterService;
     }
 
-    /**
-     * Registra un asiento contable validando la partida doble.
-     * Idempotente por {@code entryUuid}: si ya existe, devuelve el asiento previo.
-     */
     @Transactional
     public JournalEntryResponse registerEntry(JournalEntryRequest request) {
         validateRequest(request);
 
-        // Idempotencia: un mismo entryUuid no se registra dos veces.
         var existing = journalEntryRepository.findByEntryUuid(request.entryUuid());
         if (existing.isPresent()) {
             return toResponse(existing.get());
@@ -51,27 +47,36 @@ public class AccountingService {
 
         validateBalanced(request.lines());
 
-        LocalDate entryDate = request.entryDate() != null
-                ? request.entryDate()
-                : parameterService.getActiveContableDate();
+        LocalDateTime entryDate = request.entryDate() != null
+                ? request.entryDate().atStartOfDay()
+                : parameterService.getActiveContableDate().atStartOfDay();
 
-        JournalEntry entry = new JournalEntry(request.entryUuid(), request.description(), entryDate);
+        JournalEntry entry = new JournalEntry();
+        entry.setEntryUuid(request.entryUuid());
+        entry.setDescription(request.description());
+        entry.setEntryDate(entryDate);
+        entry.setStatus(EntryStatus.REGISTRADO);
+
         for (JournalEntryLineRequest lineReq : request.lines()) {
             AccountingAccount account = resolveDetailAccount(lineReq.accountCode());
             account.applyMovement(lineReq.movementType(), lineReq.amount());
-            entry.addLine(new JournalEntryLine(account, lineReq.movementType(), lineReq.amount(), lineReq.reference()));
+
+            JournalEntryLine line = new JournalEntryLine();
+            line.setAccount(account);
+            line.setMovementType(lineReq.movementType());
+            line.setAmount(lineReq.amount());
+            line.setReference(lineReq.reference());
+            entry.addLine(line);
         }
 
-        JournalEntry saved = journalEntryRepository.save(entry);
-        return toResponse(saved);
+        return toResponse(journalEntryRepository.save(entry));
     }
 
-    /** Balance de Comprobación de la fecha indicada (o la fecha contable activa). */
     @Transactional(readOnly = true)
     public TrialBalanceResponse trialBalance(LocalDate date) {
         LocalDate contableDate = date != null ? date : parameterService.getActiveContableDate();
 
-        List<TrialBalanceAccountDto> accounts = accountRepository.findAllByOrderByCodeAsc().stream()
+        List<TrialBalanceAccountDto> accounts = accountRepository.findAllByOrderByAccountCodeAsc().stream()
                 .map(this::toTrialBalanceRow)
                 .toList();
 
@@ -82,19 +87,19 @@ public class AccountingService {
                 .map(TrialBalanceAccountDto::creditBalance)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        boolean balanced = totalDebits.compareTo(totalCredits) == 0;
-        return new TrialBalanceResponse(contableDate, accounts, totalDebits, totalCredits, balanced);
+        return new TrialBalanceResponse(contableDate, accounts, totalDebits, totalCredits,
+                totalDebits.compareTo(totalCredits) == 0);
     }
 
     private TrialBalanceAccountDto toTrialBalanceRow(AccountingAccount account) {
-        BigDecimal balance = account.getBalance();
+        BigDecimal balance = account.getCurrentBalance();
         BigDecimal debit = balance.signum() >= 0 ? balance : BigDecimal.ZERO;
         BigDecimal credit = balance.signum() < 0 ? balance.negate() : BigDecimal.ZERO;
-        return new TrialBalanceAccountDto(account.getCode(), account.getName(), debit, credit);
+        return new TrialBalanceAccountDto(account.getAccountCode(), account.getName(), debit, credit);
     }
 
     private AccountingAccount resolveDetailAccount(String code) {
-        AccountingAccount account = accountRepository.findByCode(code)
+        AccountingAccount account = accountRepository.findById(code)
                 .orElseThrow(() -> new InvalidAccountException("La cuenta " + code + " no existe en el Plan de Cuentas."));
         if (!account.isDetalle()) {
             throw new InvalidAccountException("La cuenta " + code + " no es de tipo DETALLE; no puede recibir asientos.");
@@ -144,6 +149,6 @@ public class AccountingService {
                 entry.getEntryUuid(),
                 entry.getStatus().name(),
                 "SUMA_CERO_OK",
-                entry.getCreatedAt());
+                entry.getEntryDate());
     }
 }

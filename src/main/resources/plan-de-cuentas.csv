@@ -1,0 +1,28 @@
+# Plan de Cuentas — seed inicial del accounting-service.
+# Solo se carga si la tabla accounting_account está vacía (entorno local / H2 tests).
+# Si banquito-infra ya ejecutó 05-seed-accountingdb.sql, este seed se omite.
+#
+# Formato (delimitador ';'): code;name;type;class;parent;openingBalance
+#   type   : ESTRUCTURAL | DETALLE      (solo DETALLE recibe asientos)
+#   class  : ACTIVO | PASIVO | INGRESO | GASTO
+#   parent : código padre o vacío para cuentas raíz
+#   openingBalance : monto POSITIVO; la clase define el signo interno (PASIVO/INGRESO → negado)
+#
+# Las 13 cuentas reales vienen del seed de infra (05-seed-accountingdb.sql).
+# La cuenta 3.1.0.01 (Patrimonio) es solo para tests H2: hace cuadrar el Balance de arranque.
+#
+code;name;type;class;parent;openingBalance
+1.0.0.00;ACTIVOS;ESTRUCTURAL;ACTIVO;;0
+1.1.0.00;Disponibilidades;ESTRUCTURAL;ACTIVO;1.0.0.00;0
+1.1.0.01;Banco Central / Cámara de Compensación;DETALLE;ACTIVO;1.1.0.00;500000.00
+1.1.0.02;Bóveda Central / Efectivo en Caja;DETALLE;ACTIVO;1.1.0.00;1000000.00
+2.0.0.00;PASIVOS;ESTRUCTURAL;PASIVO;;0
+2.1.0.00;Obligaciones con el Público;ESTRUCTURAL;PASIVO;2.0.0.00;0
+2.1.0.01;Cuentas de Ahorros Clientes;DETALLE;PASIVO;2.1.0.00;0
+2.1.0.02;Cuentas Corrientes Clientes;DETALLE;PASIVO;2.1.0.00;0
+2.2.0.00;Retenciones e Impuestos;ESTRUCTURAL;PASIVO;2.0.0.00;0
+2.2.0.01;IVA Retenido por Servicios;DETALLE;PASIVO;2.2.0.00;0
+4.0.0.00;INGRESOS;ESTRUCTURAL;INGRESO;;0
+4.1.0.00;Ingresos por Servicios;ESTRUCTURAL;INGRESO;4.0.0.00;0
+4.1.0.01;Comisiones por Pagos Masivos;DETALLE;INGRESO;4.1.0.00;0
+3.1.0.01;Patrimonio / Capital Inicial;DETALLE;PASIVO;;1500000.00
