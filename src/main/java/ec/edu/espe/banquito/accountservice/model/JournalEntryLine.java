@@ -1,5 +1,6 @@
-package ec.edu.espe.banquito.accountservice.domain;
+package ec.edu.espe.banquito.accountservice.model;
 
+import ec.edu.espe.banquito.accountservice.enums.MovementType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,7 +24,6 @@ public class JournalEntryLine {
     @JoinColumn(name = "account_code", referencedColumnName = "account_code", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private AccountingAccount account;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "movement_type", nullable = false, length = 10)
     private MovementType movementType;
 

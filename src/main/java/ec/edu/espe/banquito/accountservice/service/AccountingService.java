@@ -1,10 +1,10 @@
 package ec.edu.espe.banquito.accountservice.service;
 
-import ec.edu.espe.banquito.accountservice.domain.AccountingAccount;
-import ec.edu.espe.banquito.accountservice.domain.EntryStatus;
-import ec.edu.espe.banquito.accountservice.domain.JournalEntry;
-import ec.edu.espe.banquito.accountservice.domain.JournalEntryLine;
-import ec.edu.espe.banquito.accountservice.domain.MovementType;
+import ec.edu.espe.banquito.accountservice.model.AccountingAccount;
+import ec.edu.espe.banquito.accountservice.enums.EntryStatus;
+import ec.edu.espe.banquito.accountservice.model.JournalEntry;
+import ec.edu.espe.banquito.accountservice.model.JournalEntryLine;
+import ec.edu.espe.banquito.accountservice.enums.MovementType;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryLineRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryResponse;
@@ -55,15 +55,16 @@ public class AccountingService {
         entry.setEntryUuid(request.entryUuid());
         entry.setDescription(request.description());
         entry.setEntryDate(entryDate);
-        entry.setStatus(EntryStatus.REGISTRADO);
+        entry.setStatus(EntryStatus.REGISTERED);
 
         for (JournalEntryLineRequest lineReq : request.lines()) {
+            MovementType movementType = MovementType.fromDatabaseValue(lineReq.movementType());
             AccountingAccount account = resolveDetailAccount(lineReq.accountCode());
-            account.applyMovement(lineReq.movementType(), lineReq.amount());
+            account.applyMovement(movementType, lineReq.amount());
 
             JournalEntryLine line = new JournalEntryLine();
             line.setAccount(account);
-            line.setMovementType(lineReq.movementType());
+            line.setMovementType(movementType);
             line.setAmount(lineReq.amount());
             line.setReference(lineReq.reference());
             entry.addLine(line);
@@ -101,7 +102,7 @@ public class AccountingService {
     private AccountingAccount resolveDetailAccount(String code) {
         AccountingAccount account = accountRepository.findById(code)
                 .orElseThrow(() -> new InvalidAccountException("La cuenta " + code + " no existe en el Plan de Cuentas."));
-        if (!account.isDetalle()) {
+        if (!account.isDetail()) {
             throw new InvalidAccountException("La cuenta " + code + " no es de tipo DETALLE; no puede recibir asientos.");
         }
         return account;
@@ -112,34 +113,34 @@ public class AccountingService {
             throw new IllegalArgumentException("entryUuid es obligatorio.");
         }
         if (request.lines() == null || request.lines().isEmpty()) {
-            throw new IllegalArgumentException("El asiento debe tener al menos una línea.");
+            throw new IllegalArgumentException("El asiento debe tener al menos una linea.");
         }
         for (JournalEntryLineRequest line : request.lines()) {
             if (line.accountCode() == null || line.accountCode().isBlank()) {
-                throw new IllegalArgumentException("Cada línea debe indicar accountCode.");
+                throw new IllegalArgumentException("Cada linea debe indicar accountCode.");
             }
             if (line.movementType() == null) {
-                throw new IllegalArgumentException("Cada línea debe indicar movementType (DEBITO|CREDITO).");
+                throw new IllegalArgumentException("Cada linea debe indicar movementType (DEBITO|CREDITO).");
             }
             if (line.amount() == null || line.amount().signum() <= 0) {
-                throw new IllegalArgumentException("El monto de cada línea debe ser mayor que cero.");
+                throw new IllegalArgumentException("El monto de cada linea debe ser mayor que cero.");
             }
         }
     }
 
     private void validateBalanced(List<JournalEntryLineRequest> lines) {
         BigDecimal debits = lines.stream()
-                .filter(l -> l.movementType() == MovementType.DEBITO)
+                .filter(l -> MovementType.fromDatabaseValue(l.movementType()) == MovementType.DEBIT)
                 .map(JournalEntryLineRequest::amount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal credits = lines.stream()
-                .filter(l -> l.movementType() == MovementType.CREDITO)
+                .filter(l -> MovementType.fromDatabaseValue(l.movementType()) == MovementType.CREDIT)
                 .map(JournalEntryLineRequest::amount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (debits.compareTo(credits) != 0) {
             throw new UnbalancedEntryException(
-                    "El asiento no cuadra: débitos=" + debits + " créditos=" + credits + " (deben ser iguales).");
+                    "El asiento no cuadra: debitos=" + debits + " creditos=" + credits + " (deben ser iguales).");
         }
     }
 

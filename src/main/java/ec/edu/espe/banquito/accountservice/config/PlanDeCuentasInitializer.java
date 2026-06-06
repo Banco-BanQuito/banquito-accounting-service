@@ -1,7 +1,7 @@
 package ec.edu.espe.banquito.accountservice.config;
 
-import ec.edu.espe.banquito.accountservice.domain.AccountType;
-import ec.edu.espe.banquito.accountservice.domain.AccountingAccount;
+import ec.edu.espe.banquito.accountservice.enums.AccountType;
+import ec.edu.espe.banquito.accountservice.model.AccountingAccount;
 import ec.edu.espe.banquito.accountservice.repository.AccountingAccountRepository;
 import ec.edu.espe.banquito.accountservice.service.ParameterService;
 import java.io.BufferedReader;
@@ -73,11 +73,11 @@ public class PlanDeCuentasInitializer implements CommandLineRunner {
         String[] f = line.split(";", -1);
         if (f.length != 6) {
             throw new IllegalStateException(
-                    "Línea " + lineNumber + " del Plan de Cuentas mal formada (se esperaban 6 campos): " + line);
+                    "Linea " + lineNumber + " del Plan de Cuentas mal formada (se esperaban 6 campos): " + line);
         }
         String code         = f[0].strip();
         String name         = f[1].strip();
-        AccountType type    = AccountType.valueOf(f[2].strip().toUpperCase());
+        AccountType type    = AccountType.fromDatabaseValue(f[2].strip().toUpperCase());
         String accountClass = f[3].strip().toUpperCase();
         String parent       = f[4].strip();
         BigDecimal opening  = new BigDecimal(f[5].strip());

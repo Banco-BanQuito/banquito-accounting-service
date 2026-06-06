@@ -1,6 +1,6 @@
 package ec.edu.espe.banquito.accountservice.service;
 
-import ec.edu.espe.banquito.accountservice.domain.AccountingParameter;
+import ec.edu.espe.banquito.accountservice.model.AccountingParameter;
 import ec.edu.espe.banquito.accountservice.repository.AccountingParameterRepository;
 import java.time.LocalDate;
 import org.springframework.stereotype.Service;

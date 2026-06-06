@@ -1,4 +1,4 @@
-package ec.edu.espe.banquito.accountservice.domain;
+package ec.edu.espe.banquito.accountservice.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;

@@ -1,6 +1,5 @@
 package ec.edu.espe.banquito.accountservice.grpc;
 
-import ec.edu.espe.banquito.accountservice.domain.MovementType;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryLineRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryResponse;
@@ -56,7 +55,7 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
     private JournalEntryLineRequest toLineDto(JournalLine line) {
         return new JournalEntryLineRequest(
                 line.getAccountCode(),
-                MovementType.valueOf(line.getMovementType()),
+                line.getMovementType(),
                 new BigDecimal(line.getAmount()),
                 line.getReference().isBlank() ? null : line.getReference());
     }

@@ -1,5 +1,7 @@
-package ec.edu.espe.banquito.accountservice.domain;
+package ec.edu.espe.banquito.accountservice.model;
 
+import ec.edu.espe.banquito.accountservice.enums.AccountType;
+import ec.edu.espe.banquito.accountservice.enums.MovementType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,7 +24,6 @@ public class AccountingAccount {
     @Column(name = "account_class", nullable = false, length = 15)
     private String accountClass;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "account_type", nullable = false, length = 15)
     private AccountType accountType;
 
@@ -43,14 +44,14 @@ public class AccountingAccount {
     }
 
     public void applyMovement(MovementType movementType, BigDecimal amount) {
-        if (movementType == MovementType.DEBITO) {
+        if (movementType == MovementType.DEBIT) {
             this.currentBalance = this.currentBalance.add(amount);
         } else {
             this.currentBalance = this.currentBalance.subtract(amount);
         }
     }
 
-    public boolean isDetalle() {
-        return this.accountType == AccountType.DETALLE;
+    public boolean isDetail() {
+        return this.accountType == AccountType.DETAIL;
     }
 }

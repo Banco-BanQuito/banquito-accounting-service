@@ -1,6 +1,6 @@
 package ec.edu.espe.banquito.accountservice.repository;
 
-import ec.edu.espe.banquito.accountservice.domain.JournalEntry;
+import ec.edu.espe.banquito.accountservice.model.JournalEntry;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 

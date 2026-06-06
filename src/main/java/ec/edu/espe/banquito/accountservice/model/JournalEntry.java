@@ -1,5 +1,6 @@
-package ec.edu.espe.banquito.accountservice.domain;
+package ec.edu.espe.banquito.accountservice.model;
 
+import ec.edu.espe.banquito.accountservice.enums.EntryStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,7 +27,6 @@ public class JournalEntry {
     @Column(name = "entry_date", nullable = false)
     private LocalDateTime entryDate;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 15)
     private EntryStatus status;
 

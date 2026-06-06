@@ -3,8 +3,7 @@ package ec.edu.espe.banquito.accountservice;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import ec.edu.espe.banquito.accountservice.domain.AccountingAccount;
-import ec.edu.espe.banquito.accountservice.domain.MovementType;
+import ec.edu.espe.banquito.accountservice.model.AccountingAccount;
 import ec.edu.espe.banquito.accountservice.dto.EodRequest;
 import ec.edu.espe.banquito.accountservice.dto.EodResponse;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryLineRequest;
@@ -38,16 +37,16 @@ class AccountingServiceTest {
     private AccountingAccountRepository accountRepository;
 
     private JournalEntryRequest depositoBalanceado(String uuid) {
-        return new JournalEntryRequest(uuid, "Depósito ventanilla", null, List.of(
-                new JournalEntryLineRequest("1.1.0.02", MovementType.DEBITO, new BigDecimal("500.00"), "DEP-001"),
-                new JournalEntryLineRequest("2.1.0.01", MovementType.CREDITO, new BigDecimal("500.00"), "DEP-001")));
+        return new JournalEntryRequest(uuid, "Deposito ventanilla", null, List.of(
+                new JournalEntryLineRequest("1.1.0.02", "DEBITO", new BigDecimal("500.00"), "DEP-001"),
+                new JournalEntryLineRequest("2.1.0.01", "CREDITO", new BigDecimal("500.00"), "DEP-001")));
     }
 
     @Test
     void registraAsientoBalanceado() {
         JournalEntryResponse response = accountingService.registerEntry(depositoBalanceado("uuid-ok-001"));
 
-        assertThat(response.status()).isEqualTo("REGISTRADO");
+        assertThat(response.status()).isEqualTo("REGISTERED");
         assertThat(response.validationResult()).isEqualTo("SUMA_CERO_OK");
         assertThat(response.entryId()).isNotNull();
     }
@@ -55,8 +54,8 @@ class AccountingServiceTest {
     @Test
     void rechazaAsientoDescuadrado() {
         JournalEntryRequest descuadrado = new JournalEntryRequest("uuid-bad-001", "No cuadra", null, List.of(
-                new JournalEntryLineRequest("1.1.0.02", MovementType.DEBITO, new BigDecimal("500.00"), null),
-                new JournalEntryLineRequest("2.1.0.01", MovementType.CREDITO, new BigDecimal("400.00"), null)));
+                new JournalEntryLineRequest("1.1.0.02", "DEBITO", new BigDecimal("500.00"), null),
+                new JournalEntryLineRequest("2.1.0.01", "CREDITO", new BigDecimal("400.00"), null)));
 
         assertThatThrownBy(() -> accountingService.registerEntry(descuadrado))
                 .isInstanceOf(UnbalancedEntryException.class);
@@ -65,8 +64,8 @@ class AccountingServiceTest {
     @Test
     void rechazaCuentaNoDetalle() {
         JournalEntryRequest estructural = new JournalEntryRequest("uuid-estructural-001", "Cuenta estructural", null, List.of(
-                new JournalEntryLineRequest("1.0.0.00", MovementType.DEBITO, new BigDecimal("100.00"), null),
-                new JournalEntryLineRequest("2.1.0.01", MovementType.CREDITO, new BigDecimal("100.00"), null)));
+                new JournalEntryLineRequest("1.0.0.00", "DEBITO", new BigDecimal("100.00"), null),
+                new JournalEntryLineRequest("2.1.0.01", "CREDITO", new BigDecimal("100.00"), null)));
 
         assertThatThrownBy(() -> accountingService.registerEntry(estructural))
                 .isInstanceOf(InvalidAccountException.class);
