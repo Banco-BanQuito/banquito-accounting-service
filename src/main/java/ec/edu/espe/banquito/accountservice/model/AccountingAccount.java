@@ -24,6 +24,7 @@ public class AccountingAccount {
     @Column(name = "account_class", nullable = false, length = 15)
     private String accountClass;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "account_type", nullable = false, length = 15)
     private AccountType accountType;
 
@@ -44,7 +45,7 @@ public class AccountingAccount {
     }
 
     public void applyMovement(MovementType movementType, BigDecimal amount) {
-        if (movementType == MovementType.DEBIT) {
+        if (movementType == MovementType.DEBITO) {
             this.currentBalance = this.currentBalance.add(amount);
         } else {
             this.currentBalance = this.currentBalance.subtract(amount);
@@ -52,6 +53,6 @@ public class AccountingAccount {
     }
 
     public boolean isDetail() {
-        return this.accountType == AccountType.DETAIL;
+        return this.accountType == AccountType.DETALLE;
     }
 }

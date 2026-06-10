@@ -1,17 +1,13 @@
 package ec.edu.espe.banquito.accountservice.enums;
+import lombok.Getter;
 
+@Getter
 public enum MovementType {
-    DEBIT,
-    CREDIT;
+    DEBITO("DEBITO"),
+    CREDITO("CREDITO");
 
-    public static MovementType fromDatabaseValue(String value) {
-        if (value == null) {
-            return null;
-        }
-        return switch (value) {
-            case "DEBITO", "DEBIT" -> DEBIT;
-            case "CREDITO", "CREDIT" -> CREDIT;
-            default -> MovementType.valueOf(value);
-        };
+    private final String value;
+    MovementType(String value) {
+        this.value = value;
     }
 }

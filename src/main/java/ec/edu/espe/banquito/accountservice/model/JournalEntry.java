@@ -27,6 +27,7 @@ public class JournalEntry {
     @Column(name = "entry_date", nullable = false)
     private LocalDateTime entryDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 15)
     private EntryStatus status;
 

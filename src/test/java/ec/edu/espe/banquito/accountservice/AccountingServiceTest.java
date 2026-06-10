@@ -46,7 +46,7 @@ class AccountingServiceTest {
     void registraAsientoBalanceado() {
         JournalEntryResponse response = accountingService.registerEntry(depositoBalanceado("uuid-ok-001"));
 
-        assertThat(response.status()).isEqualTo("REGISTERED");
+        assertThat(response.status()).isEqualTo("REGISTRADO");
         assertThat(response.validationResult()).isEqualTo("SUMA_CERO_OK");
         assertThat(response.entryId()).isNotNull();
     }

@@ -1,17 +1,16 @@
 package ec.edu.espe.banquito.accountservice.enums;
+import lombok.Getter;
+
+@Getter
 
 public enum AccountType {
-    STRUCTURAL,
-    DETAIL;
+    ESTRUCTURAL("ESTRUCTURAL"),
+    DETALLE("DETALLE");
 
-    public static AccountType fromDatabaseValue(String value) {
-        if (value == null) {
-            return null;
-        }
-        return switch (value) {
-            case "ESTRUCTURAL", "STRUCTURAL" -> STRUCTURAL;
-            case "DETALLE", "DETAIL" -> DETAIL;
-            default -> AccountType.valueOf(value);
-        };
+    private final String value;
+
+    AccountType(String value) {
+        this.value = value;
     }
+
 }

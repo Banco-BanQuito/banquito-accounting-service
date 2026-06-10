@@ -1,17 +1,14 @@
 package ec.edu.espe.banquito.accountservice.enums;
 
-public enum EntryStatus {
-    REGISTERED,
-    CANCELLED;
+import lombok.Getter;
 
-    public static EntryStatus fromDatabaseValue(String value) {
-        if (value == null) {
-            return null;
-        }
-        return switch (value) {
-            case "REGISTRADO", "REGISTERED" -> REGISTERED;
-            case "ANULADO", "CANCELLED" -> CANCELLED;
-            default -> EntryStatus.valueOf(value);
-        };
+@Getter
+public enum EntryStatus {
+    REGISTRADO("REGISTRADO"),
+    ANULADO("ANULADO");
+
+    private final String value;
+    EntryStatus(String value) {
+        this.value = value;
     }
 }

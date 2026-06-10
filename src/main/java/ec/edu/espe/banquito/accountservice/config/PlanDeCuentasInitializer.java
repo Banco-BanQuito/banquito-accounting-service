@@ -77,7 +77,7 @@ public class PlanDeCuentasInitializer implements CommandLineRunner {
         }
         String code         = f[0].strip();
         String name         = f[1].strip();
-        AccountType type    = AccountType.fromDatabaseValue(f[2].strip().toUpperCase());
+        AccountType type    = AccountType.valueOf(f[2].strip().toUpperCase());
         String accountClass = f[3].strip().toUpperCase();
         String parent       = f[4].strip();
         BigDecimal opening  = new BigDecimal(f[5].strip());

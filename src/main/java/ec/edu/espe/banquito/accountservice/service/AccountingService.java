@@ -55,10 +55,10 @@ public class AccountingService {
         entry.setEntryUuid(request.entryUuid());
         entry.setDescription(request.description());
         entry.setEntryDate(entryDate);
-        entry.setStatus(EntryStatus.REGISTERED);
+        entry.setStatus(EntryStatus.REGISTRADO);
 
         for (JournalEntryLineRequest lineReq : request.lines()) {
-            MovementType movementType = MovementType.fromDatabaseValue(lineReq.movementType());
+            MovementType movementType = MovementType.valueOf(lineReq.movementType());
             AccountingAccount account = resolveDetailAccount(lineReq.accountCode());
             account.applyMovement(movementType, lineReq.amount());
 
@@ -130,11 +130,11 @@ public class AccountingService {
 
     private void validateBalanced(List<JournalEntryLineRequest> lines) {
         BigDecimal debits = lines.stream()
-                .filter(l -> MovementType.fromDatabaseValue(l.movementType()) == MovementType.DEBIT)
+                .filter(l -> MovementType.valueOf(l.movementType()) == MovementType.DEBITO)
                 .map(JournalEntryLineRequest::amount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal credits = lines.stream()
-                .filter(l -> MovementType.fromDatabaseValue(l.movementType()) == MovementType.CREDIT)
+                .filter(l -> MovementType.valueOf(l.movementType()) == MovementType.CREDITO)
                 .map(JournalEntryLineRequest::amount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
