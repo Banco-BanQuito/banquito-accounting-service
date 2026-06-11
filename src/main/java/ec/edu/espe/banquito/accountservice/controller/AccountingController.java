@@ -10,7 +10,6 @@ import ec.edu.espe.banquito.accountservice.service.EndOfDayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -37,20 +36,16 @@ public class AccountingController {
 
     @PostMapping("/entries")
     @Operation(summary = "Registrar asiento contable", description = "Registra un asiento de partida doble. Valida que suma(DÉBITOS) == suma(CRÉDITOS); devuelve 422 si no cuadra.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Asiento registrado"),
-            @ApiResponse(responseCode = "422", description = "El asiento no cuadra o cuenta inválida")
-    })
+    @ApiResponse(responseCode = "200", description = "Asiento registrado")
+    @ApiResponse(responseCode = "422", description = "El asiento no cuadra o cuenta inválida")
     public ResponseEntity<JournalEntryResponse> registerEntry(@RequestBody JournalEntryRequest request) {
         return ResponseEntity.ok(accountingService.registerEntry(request));
     }
 
     @PostMapping("/eod")
     @Operation(summary = "Proceso End-of-Day", description = "Cierra el día contable. Devuelve 200 si los débitos cuadran con los créditos, 409 si no cuadran.")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Cierre completado"),
-            @ApiResponse(responseCode = "409", description = "No cuadra el Balance de Comprobación")
-    })
+    @ApiResponse(responseCode = "200", description = "Cierre completado")
+    @ApiResponse(responseCode = "409", description = "No cuadra el Balance de Comprobación")
     public ResponseEntity<EodResponse> runEndOfDay(@RequestBody(required = false) EodRequest request) {
         return ResponseEntity.ok(endOfDayService.runEndOfDay(request));
     }

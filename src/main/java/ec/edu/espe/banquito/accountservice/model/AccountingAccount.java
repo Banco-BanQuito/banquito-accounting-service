@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "accounting_account")
@@ -40,7 +41,7 @@ public class AccountingAccount {
     @PrePersist
     protected void onCreate() {
         if (this.creationDate == null) {
-            this.creationDate = LocalDateTime.now();
+            this.creationDate = LocalDateTime.now(ZoneOffset.UTC);
         }
     }
 

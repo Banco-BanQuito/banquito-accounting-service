@@ -5,6 +5,7 @@ import ec.edu.espe.banquito.accountservice.model.AccountingAccount;
 import ec.edu.espe.banquito.accountservice.repository.AccountingAccountRepository;
 import ec.edu.espe.banquito.accountservice.service.ParameterService;
 import java.io.BufferedReader;
+import java.time.Month;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
@@ -16,15 +17,17 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile("!test")
 public class PlanDeCuentasInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(PlanDeCuentasInitializer.class);
     private static final String PLAN_RESOURCE = "plan-de-cuentas.csv";
-    private static final LocalDate FECHA_CONTABLE_INICIAL = LocalDate.of(2026, 5, 30);
+    private static final LocalDate FECHA_CONTABLE_INICIAL = LocalDate.of(2026, Month.MAY, 30);
 
     private final AccountingAccountRepository accountRepository;
     private final ParameterService parameterService;

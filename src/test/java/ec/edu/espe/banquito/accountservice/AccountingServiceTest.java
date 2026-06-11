@@ -112,7 +112,8 @@ class AccountingServiceTest {
         boveda.setCurrentBalance(boveda.getCurrentBalance().add(new BigDecimal("999.99")));
         accountRepository.save(boveda);
 
-        assertThatThrownBy(() -> endOfDayService.runEndOfDay(new EodRequest("system", null)))
+        EodRequest req = new EodRequest("system", null);
+        assertThatThrownBy(() -> endOfDayService.runEndOfDay(req))
                 .isInstanceOf(EodNotBalancedException.class);
     }
 }

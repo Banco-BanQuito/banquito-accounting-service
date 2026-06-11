@@ -7,7 +7,10 @@ option java_package = "ec.edu.espe.banquito.accountservice.grpc.proto";
 option java_outer_classname = "AccountingServiceProto";
 
 service AccountingService {
+  // Deprecated: el consumidor no debe decidir las cuentas contables.
   rpc RegisterEntry(AccountingEntryRequest) returns (AccountingEntryResponse);
+  // Preferred: Accounting resuelve las cuentas internamente según reglas parametrizadas.
+  rpc PostOperation(AccountingOperationRequest) returns (AccountingEntryResponse);
 }
 
 message AccountingEntryRequest {
@@ -22,6 +25,16 @@ message JournalLine {
   string movement_type = 2;
   string amount = 3;
   string reference = 4;
+}
+
+message AccountingOperationRequest {
+  string operation_uuid = 1;
+  string operation_type = 2;
+  string account_product_type = 3;
+  string amount = 4;
+  string commission_amount = 5;
+  string reference = 6;
+  string accounting_date = 7;
 }
 
 message AccountingEntryResponse {

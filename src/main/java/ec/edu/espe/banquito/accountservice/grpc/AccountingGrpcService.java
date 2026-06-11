@@ -3,10 +3,13 @@ package ec.edu.espe.banquito.accountservice.grpc;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryLineRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryResponse;
+import ec.edu.espe.banquito.accountservice.dto.OperationRequest;
 import ec.edu.espe.banquito.accountservice.grpc.proto.AccountingEntryRequest;
 import ec.edu.espe.banquito.accountservice.grpc.proto.AccountingEntryResponse;
+import ec.edu.espe.banquito.accountservice.grpc.proto.AccountingOperationRequest;
 import ec.edu.espe.banquito.accountservice.grpc.proto.AccountingServiceGrpc;
 import ec.edu.espe.banquito.accountservice.grpc.proto.JournalLine;
+import ec.edu.espe.banquito.accountservice.service.AccountingRulesService;
 import ec.edu.espe.banquito.accountservice.service.AccountingService;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -19,26 +22,21 @@ import org.springframework.stereotype.Component;
 public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServiceImplBase {
 
     private final AccountingService accountingService;
+    private final AccountingRulesService accountingRulesService;
 
-    public AccountingGrpcService(AccountingService accountingService) {
+    public AccountingGrpcService(AccountingService accountingService,
+                                 AccountingRulesService accountingRulesService) {
         this.accountingService = accountingService;
+        this.accountingRulesService = accountingRulesService;
     }
 
     @Override
     public void registerEntry(AccountingEntryRequest request,
-                              StreamObserver<AccountingEntryResponse> responseObserver) {
+                               StreamObserver<AccountingEntryResponse> responseObserver) {
         try {
-            JournalEntryResponse result = accountingService.registerEntry(toDto(request));
-
-            responseObserver.onNext(AccountingEntryResponse.newBuilder()
-                    .setEntryId(result.entryId())
-                    .setEntryUuid(result.entryUuid())
-                    .setStatus(result.status())
-                    .setValidationResult(result.validationResult())
-                    .setRegisteredAt(result.registeredAt().toString())
-                    .build());
+            JournalEntryResponse result = accountingService.registerEntry(toEntryDto(request));
+            responseObserver.onNext(toResponse(result));
             responseObserver.onCompleted();
-
         } catch (IllegalArgumentException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
         } catch (Exception e) {
@@ -46,7 +44,30 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
         }
     }
 
-    private JournalEntryRequest toDto(AccountingEntryRequest request) {
+    @Override
+    public void postOperation(AccountingOperationRequest request,
+                               StreamObserver<AccountingEntryResponse> responseObserver) {
+        try {
+            OperationRequest dto = new OperationRequest(
+                    request.getOperationUuid(),
+                    request.getOperationType(),
+                    request.getAccountProductType(),
+                    request.getAmount(),
+                    request.getCommissionAmount(),
+                    request.getReference(),
+                    request.getAccountingDate());
+
+            JournalEntryResponse result = accountingRulesService.postOperation(dto);
+            responseObserver.onNext(toResponse(result));
+            responseObserver.onCompleted();
+        } catch (IllegalArgumentException e) {
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
+        } catch (Exception e) {
+            responseObserver.onError(Status.INTERNAL.withDescription(e.getMessage()).asRuntimeException());
+        }
+    }
+
+    private JournalEntryRequest toEntryDto(AccountingEntryRequest request) {
         LocalDate entryDate = request.getEntryDate().isBlank() ? null : LocalDate.parse(request.getEntryDate());
         List<JournalEntryLineRequest> lines = request.getLinesList().stream().map(this::toLineDto).toList();
         return new JournalEntryRequest(request.getEntryUuid(), request.getDescription(), entryDate, lines);
@@ -58,5 +79,15 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
                 line.getMovementType(),
                 new BigDecimal(line.getAmount()),
                 line.getReference().isBlank() ? null : line.getReference());
+    }
+
+    private AccountingEntryResponse toResponse(JournalEntryResponse result) {
+        return AccountingEntryResponse.newBuilder()
+                .setEntryId(result.entryId())
+                .setEntryUuid(result.entryUuid())
+                .setStatus(result.status())
+                .setValidationResult(result.validationResult())
+                .setRegisteredAt(result.registeredAt().toString())
+                .build();
     }
 }

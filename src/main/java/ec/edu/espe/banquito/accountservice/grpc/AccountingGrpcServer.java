@@ -1,6 +1,5 @@
 package ec.edu.espe.banquito.accountservice.grpc;
 
-import io.grpc.BindableService;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import jakarta.annotation.PostConstruct;
@@ -27,7 +26,7 @@ public class AccountingGrpcServer {
     public void start() throws IOException {
         server = ServerBuilder
                 .forPort(port)
-                .addService((BindableService) accountingGrpcService)
+                .addService(accountingGrpcService)
                 .build()
                 .start();
     }
