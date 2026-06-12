@@ -23,6 +23,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+@SuppressWarnings("java:S1313") // códigos del plan de cuentas, no direcciones IP
 @Component
 @Profile("!test")
 public class AccountingRulesInitializer implements CommandLineRunner {
