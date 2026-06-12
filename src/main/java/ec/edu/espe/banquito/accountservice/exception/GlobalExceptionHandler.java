@@ -1,5 +1,6 @@
 package ec.edu.espe.banquito.accountservice.exception;
 
+import java.io.UncheckedIOException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of(ERROR_KEY, ex.getMessage()));
+    }
+
+    @ExceptionHandler(UncheckedIOException.class)
+    public ResponseEntity<Map<String, String>> handleIoError(UncheckedIOException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of(ERROR_KEY, ex.getMessage()));
     }
 }

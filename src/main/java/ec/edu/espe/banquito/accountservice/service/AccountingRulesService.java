@@ -11,6 +11,7 @@ import ec.edu.espe.banquito.accountservice.repository.AccountingRuleRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
@@ -37,7 +38,7 @@ public class AccountingRulesService {
 
         LocalDate contableDate = (request.accountingDate() == null || request.accountingDate().isBlank())
                 ? parameterService.getActiveContableDate()
-                : LocalDate.parse(request.accountingDate());
+                : parseAccountingDate(request.accountingDate());
 
         AccountingRule rule = ruleRepository
                 .findActiveByType(request.operationType(), contableDate)
@@ -94,6 +95,19 @@ public class AccountingRulesService {
         }
         if (request.amount() == null || request.amount().isBlank()) {
             throw new IllegalArgumentException("amount es obligatorio.");
+        }
+        try {
+            new BigDecimal(request.amount());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("amount no es un número válido: " + request.amount());
+        }
+    }
+
+    private LocalDate parseAccountingDate(String raw) {
+        try {
+            return LocalDate.parse(raw);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("accountingDate no tiene formato válido (YYYY-MM-DD): " + raw);
         }
     }
 }

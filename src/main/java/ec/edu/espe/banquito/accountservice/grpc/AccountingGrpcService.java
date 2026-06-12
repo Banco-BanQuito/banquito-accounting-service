@@ -76,10 +76,16 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
     }
 
     private JournalEntryLineRequest toLineDto(JournalLine line) {
+        BigDecimal amount;
+        try {
+            amount = new BigDecimal(line.getAmount());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("amount de línea no es un número válido: " + line.getAmount());
+        }
         return new JournalEntryLineRequest(
                 line.getAccountCode(),
                 line.getMovementType(),
-                new BigDecimal(line.getAmount()),
+                amount,
                 line.getReference().isBlank() ? null : line.getReference());
     }
 
