@@ -16,9 +16,11 @@ import io.grpc.stub.StreamObserver;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile("!test")
 public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServiceImplBase {
 
     private final AccountingService accountingService;

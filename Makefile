@@ -24,4 +24,4 @@ build:
 	$(MVN) clean package -DskipTests
 
 analyze:
-	$(MVN) clean verify sonar:sonar -Dsonar.token=$(SONAR_TOKEN)
+	$(MVN) verify sonar:sonar -Dsonar.token=$(SONAR_TOKEN)
