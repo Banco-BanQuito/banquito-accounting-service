@@ -22,6 +22,13 @@
 		<sonar.projectKey>banquito-accounting-service</sonar.projectKey>
 		<sonar.host.url>http://localhost:9000</sonar.host.url>
 		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+		<!-- Excluir clases de infraestructura que no se instancian en el perfil test -->
+		<sonar.coverage.exclusions>
+			**/grpc/AccountingGrpcService.java,
+			**/grpc/AccountingGrpcServer.java,
+			**/config/AccountingRulesInitializer.java,
+			**/config/PlanDeCuentasInitializer.java
+		</sonar.coverage.exclusions>
 	</properties>
 	<dependencies>
 		<dependency>
