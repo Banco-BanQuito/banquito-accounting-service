@@ -30,6 +30,13 @@ public class AccountingRulesInitializer implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(AccountingRulesInitializer.class);
     private static final LocalDate EFFECTIVE_FROM = LocalDate.of(2026, Month.JANUARY, 1);
 
+    private static final String BOVEDA         = "1.1.0.02";
+    private static final String BANCO_CENTRAL  = "1.1.0.01";
+    private static final String AHORROS        = "2.1.0.01";
+    private static final String CORRIENTES     = "2.1.0.02";
+    private static final String IVA_POR_PAGAR  = "2.2.0.01";
+    private static final String COMISIONES     = "4.1.0.01";
+
     private final AccountingRuleRepository ruleRepository;
     private final ParameterService parameterService;
 
@@ -49,36 +56,36 @@ public class AccountingRulesInitializer implements CommandLineRunner {
 
         List<AccountingRule> rules = List.of(
             buildRule("TELLER_DEPOSIT", "Depósito en ventanilla",
-                line("1.1.0.02", DEBITO,  PRINCIPAL),
-                line("2.1.0.01", CREDITO, PRINCIPAL)
+                line(BOVEDA, DEBITO,  PRINCIPAL),
+                line(AHORROS, CREDITO, PRINCIPAL)
             ),
             buildRule("TELLER_WITHDRAWAL", "Retiro en ventanilla",
-                line("2.1.0.01", DEBITO,  PRINCIPAL),
-                line("1.1.0.02", CREDITO, PRINCIPAL)
+                line(AHORROS, DEBITO,  PRINCIPAL),
+                line(BOVEDA, CREDITO, PRINCIPAL)
             ),
             buildRule("P2P_TRANSFER", "Transferencia P2P entre cuentas de ahorros",
-                line("2.1.0.01", DEBITO,  PRINCIPAL),
-                line("2.1.0.01", CREDITO, PRINCIPAL),
-                line("2.1.0.01", DEBITO,  COMMISSION),
-                line("4.1.0.01", CREDITO, COMMISSION),
-                line("2.1.0.01", DEBITO,  IVA_ON_COMMISSION),
-                line("2.2.0.01", CREDITO, IVA_ON_COMMISSION)
+                line(AHORROS, DEBITO,  PRINCIPAL),
+                line(AHORROS, CREDITO, PRINCIPAL),
+                line(AHORROS, DEBITO,  COMMISSION),
+                line(COMISIONES, CREDITO, COMMISSION),
+                line(AHORROS, DEBITO,  IVA_ON_COMMISSION),
+                line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
             ),
             buildRule("BATCH_CREDIT", "Acreditación masiva (nómina / pagos corporativos)",
-                line("1.1.0.01", DEBITO,  PRINCIPAL),
-                line("2.1.0.01", CREDITO, PRINCIPAL),
-                line("2.1.0.01", DEBITO,  COMMISSION),
-                line("4.1.0.01", CREDITO, COMMISSION),
-                line("2.1.0.01", DEBITO,  IVA_ON_COMMISSION),
-                line("2.2.0.01", CREDITO, IVA_ON_COMMISSION)
+                line(BANCO_CENTRAL, DEBITO,  PRINCIPAL),
+                line(AHORROS, CREDITO, PRINCIPAL),
+                line(AHORROS, DEBITO,  COMMISSION),
+                line(COMISIONES, CREDITO, COMMISSION),
+                line(AHORROS, DEBITO,  IVA_ON_COMMISSION),
+                line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
             ),
             buildRule("CORPORATE_DEBIT", "Débito corporativo desde cuenta corriente",
-                line("2.1.0.02", DEBITO,  PRINCIPAL),
-                line("1.1.0.01", CREDITO, PRINCIPAL),
-                line("2.1.0.02", DEBITO,  COMMISSION),
-                line("4.1.0.01", CREDITO, COMMISSION),
-                line("2.1.0.02", DEBITO,  IVA_ON_COMMISSION),
-                line("2.2.0.01", CREDITO, IVA_ON_COMMISSION)
+                line(CORRIENTES, DEBITO,  PRINCIPAL),
+                line(BANCO_CENTRAL, CREDITO, PRINCIPAL),
+                line(CORRIENTES, DEBITO,  COMMISSION),
+                line(COMISIONES, CREDITO, COMMISSION),
+                line(CORRIENTES, DEBITO,  IVA_ON_COMMISSION),
+                line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
             )
         );
 
