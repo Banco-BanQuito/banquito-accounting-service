@@ -10,6 +10,7 @@ import ec.edu.espe.banquito.accountservice.dto.JournalEntryRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryResponse;
 import ec.edu.espe.banquito.accountservice.dto.TrialBalanceAccountDto;
 import ec.edu.espe.banquito.accountservice.dto.TrialBalanceResponse;
+import ec.edu.espe.banquito.accountservice.exception.AccountingValidationException;
 import ec.edu.espe.banquito.accountservice.exception.InvalidAccountException;
 import ec.edu.espe.banquito.accountservice.exception.UnbalancedEntryException;
 import ec.edu.espe.banquito.accountservice.repository.AccountingAccountRepository;
@@ -110,20 +111,20 @@ public class AccountingService {
 
     private void validateRequest(JournalEntryRequest request) {
         if (request.entryUuid() == null || request.entryUuid().isBlank()) {
-            throw new IllegalArgumentException("entryUuid es obligatorio.");
+            throw new AccountingValidationException("entryUuid es obligatorio.");
         }
         if (request.lines() == null || request.lines().isEmpty()) {
-            throw new IllegalArgumentException("El asiento debe tener al menos una linea.");
+            throw new AccountingValidationException("El asiento debe tener al menos una linea.");
         }
         for (JournalEntryLineRequest line : request.lines()) {
             if (line.accountCode() == null || line.accountCode().isBlank()) {
-                throw new IllegalArgumentException("Cada linea debe indicar accountCode.");
+                throw new AccountingValidationException("Cada linea debe indicar accountCode.");
             }
             if (line.movementType() == null) {
-                throw new IllegalArgumentException("Cada linea debe indicar movementType (DEBITO|CREDITO).");
+                throw new AccountingValidationException("Cada linea debe indicar movementType (DEBITO|CREDITO).");
             }
             if (line.amount() == null || line.amount().signum() <= 0) {
-                throw new IllegalArgumentException("El monto de cada linea debe ser mayor que cero.");
+                throw new AccountingValidationException("El monto de cada linea debe ser mayor que cero.");
             }
         }
     }

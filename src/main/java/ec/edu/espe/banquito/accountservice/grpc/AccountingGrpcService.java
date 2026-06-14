@@ -10,6 +10,8 @@ import ec.edu.espe.banquito.accountservice.grpc.proto.AccountingEntryResponse;
 import ec.edu.espe.banquito.accountservice.grpc.proto.AccountingOperationRequest;
 import ec.edu.espe.banquito.accountservice.grpc.proto.AccountingServiceGrpc;
 import ec.edu.espe.banquito.accountservice.grpc.proto.JournalLine;
+import ec.edu.espe.banquito.accountservice.exception.AccountingException;
+import ec.edu.espe.banquito.accountservice.exception.AccountingValidationException;
 import ec.edu.espe.banquito.accountservice.service.AccountingRulesService;
 import ec.edu.espe.banquito.accountservice.service.AccountingService;
 import io.grpc.Status;
@@ -40,7 +42,7 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
             JournalEntryResponse result = accountingService.registerEntry(toEntryDto(request));
             responseObserver.onNext(toResponse(result));
             responseObserver.onCompleted();
-        } catch (IllegalArgumentException e) {
+        } catch (AccountingException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
         } catch (Exception e) {
             responseObserver.onError(Status.INTERNAL.withDescription(e.getMessage()).asRuntimeException());
@@ -63,7 +65,7 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
             PostOperationResponse result = accountingRulesService.postOperation(dto);
             responseObserver.onNext(toResponse(result));
             responseObserver.onCompleted();
-        } catch (IllegalArgumentException e) {
+        } catch (AccountingException e) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
         } catch (Exception e) {
             responseObserver.onError(Status.INTERNAL.withDescription(e.getMessage()).asRuntimeException());
@@ -81,7 +83,7 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
         try {
             amount = new BigDecimal(line.getAmount());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("amount de línea no es un número válido: " + line.getAmount());
+            throw new AccountingValidationException("amount de línea no es un número válido: " + line.getAmount());
         }
         return new JournalEntryLineRequest(
                 line.getAccountCode(),

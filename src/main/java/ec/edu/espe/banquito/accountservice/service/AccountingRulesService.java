@@ -4,6 +4,7 @@ import ec.edu.espe.banquito.accountservice.dto.JournalEntryLineRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryRequest;
 import ec.edu.espe.banquito.accountservice.dto.OperationRequest;
 import ec.edu.espe.banquito.accountservice.dto.PostOperationResponse;
+import ec.edu.espe.banquito.accountservice.exception.AccountingValidationException;
 import ec.edu.espe.banquito.accountservice.model.AccountingRule;
 import ec.edu.espe.banquito.accountservice.model.AccountingRuleLine;
 import ec.edu.espe.banquito.accountservice.repository.AccountingRuleRepository;
@@ -46,7 +47,7 @@ public class AccountingRulesService {
         AccountingRule rule = ruleRepository
                 .findActiveByType(effectiveType, contableDate)
                 .stream().findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new AccountingValidationException(
                         "Sin regla contable para '" + effectiveType + "' el " + contableDate));
 
         BigDecimal principal = new BigDecimal(request.amount());
@@ -61,7 +62,7 @@ public class AccountingRulesService {
                 .toList();
 
         if (lines.isEmpty()) {
-            throw new IllegalArgumentException(
+            throw new AccountingValidationException(
                     "La operación '" + effectiveType + "' genera asiento vacío con los montos dados.");
         }
 
@@ -101,18 +102,18 @@ public class AccountingRulesService {
 
     private void validateRequest(OperationRequest request) {
         if (request.operationUuid() == null || request.operationUuid().isBlank()) {
-            throw new IllegalArgumentException("operationUuid es obligatorio.");
+            throw new AccountingValidationException("operationUuid es obligatorio.");
         }
         if (request.operationType() == null || request.operationType().isBlank()) {
-            throw new IllegalArgumentException("operationType es obligatorio.");
+            throw new AccountingValidationException("operationType es obligatorio.");
         }
         if (request.amount() == null || request.amount().isBlank()) {
-            throw new IllegalArgumentException("amount es obligatorio.");
+            throw new AccountingValidationException("amount es obligatorio.");
         }
         try {
             new BigDecimal(request.amount());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("amount no es un número válido: " + request.amount());
+            throw new AccountingValidationException("amount no es un número válido: " + request.amount());
         }
     }
 
@@ -120,7 +121,7 @@ public class AccountingRulesService {
         try {
             return LocalDate.parse(raw);
         } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("accountingDate no tiene formato válido (YYYY-MM-DD): " + raw);
+            throw new AccountingValidationException("accountingDate no tiene formato válido (YYYY-MM-DD): " + raw);
         }
     }
 }

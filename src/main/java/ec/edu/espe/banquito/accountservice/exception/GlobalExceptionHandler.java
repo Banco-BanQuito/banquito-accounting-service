@@ -13,7 +13,7 @@ public class GlobalExceptionHandler {
     private static final String ERROR_KEY = "error";
 
     @ExceptionHandler({UnbalancedEntryException.class, InvalidAccountException.class})
-    public ResponseEntity<Map<String, String>> handleUnprocessable(RuntimeException ex) {
+    public ResponseEntity<Map<String, String>> handleUnprocessable(AccountingException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
                 .body(Map.of(ERROR_KEY, ex.getMessage()));
     }
@@ -24,8 +24,8 @@ public class GlobalExceptionHandler {
                 .body(Map.of(ERROR_KEY, ex.getMessage()));
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException ex) {
+    @ExceptionHandler(AccountingValidationException.class)
+    public ResponseEntity<Map<String, String>> handleBadRequest(AccountingValidationException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of(ERROR_KEY, ex.getMessage()));
     }
