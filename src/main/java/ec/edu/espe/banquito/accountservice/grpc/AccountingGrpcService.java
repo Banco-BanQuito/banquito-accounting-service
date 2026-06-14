@@ -56,7 +56,8 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
             OperationRequest dto = new OperationRequest(
                     request.getOperationUuid(),
                     request.getOperationType(),
-                    request.getAccountProductType(),
+                    request.getSourceAccountProductType(),
+                    request.getDestinationAccountProductType(),
                     request.getAmount(),
                     request.getCommissionAmount(),
                     request.getReference(),

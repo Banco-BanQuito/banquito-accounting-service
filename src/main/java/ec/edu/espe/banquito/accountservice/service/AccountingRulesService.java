@@ -40,9 +40,7 @@ public class AccountingRulesService {
                 ? parameterService.getActiveContableDate()
                 : parseAccountingDate(request.accountingDate());
 
-        String effectiveType = (request.accountProductType() != null && !request.accountProductType().isBlank())
-                ? request.operationType() + "_" + request.accountProductType()
-                : request.operationType();
+        String effectiveType = buildEffectiveType(request);
 
         AccountingRule rule = ruleRepository
                 .findActiveByType(effectiveType, contableDate)
@@ -115,6 +113,20 @@ public class AccountingRulesService {
         } catch (NumberFormatException e) {
             throw new AccountingValidationException("amount no es un número válido: " + request.amount());
         }
+    }
+
+    private String buildEffectiveType(OperationRequest request) {
+        String src = request.sourceAccountProductType();
+        String dst = request.destinationAccountProductType();
+        boolean hasSrc = src != null && !src.isBlank();
+        boolean hasDst = dst != null && !dst.isBlank();
+        if (!hasSrc) {
+            return request.operationType();
+        }
+        if (!hasDst || dst.equalsIgnoreCase(src)) {
+            return request.operationType() + "_" + src;
+        }
+        return request.operationType() + "_" + src + "_TO_" + dst;
     }
 
     private LocalDate parseAccountingDate(String raw) {

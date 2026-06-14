@@ -23,7 +23,7 @@ class AccountingRulesServiceTest {
     @Test
     void tellerDepositRegistraAsientoBalanceado() {
         OperationRequest req = new OperationRequest(
-                "uuid-rd-001", "TELLER_DEPOSIT", "SAVINGS", "500.00", "", "DEP-001", "");
+                "uuid-rd-001", "TELLER_DEPOSIT", "SAVINGS", null, "500.00", "", "DEP-001", "");
 
         PostOperationResponse resp = rulesService.postOperation(req);
 
@@ -38,7 +38,7 @@ class AccountingRulesServiceTest {
     @Test
     void tellerWithdrawalRegistraAsientoBalanceado() {
         OperationRequest req = new OperationRequest(
-                "uuid-rw-001", "TELLER_WITHDRAWAL", "SAVINGS", "200.00", null, "WIT-001", null);
+                "uuid-rw-001", "TELLER_WITHDRAWAL", "SAVINGS", null, "200.00", null, "WIT-001", null);
 
         PostOperationResponse resp = rulesService.postOperation(req);
 
@@ -49,7 +49,7 @@ class AccountingRulesServiceTest {
     @Test
     void postOperationEsIdempotentePorUuid() {
         OperationRequest req = new OperationRequest(
-                "uuid-rd-idem-001", "TELLER_DEPOSIT", "SAVINGS", "300.00", null, "REF", null);
+                "uuid-rd-idem-001", "TELLER_DEPOSIT", "SAVINGS", null, "300.00", null, "REF", null);
 
         PostOperationResponse first = rulesService.postOperation(req);
         PostOperationResponse second = rulesService.postOperation(req);
@@ -58,9 +58,9 @@ class AccountingRulesServiceTest {
     }
 
     @Test
-    void p2pConComisionRegistraTodasLasLineas() {
+    void p2pMismoTipoConComisionRegistraTodasLasLineas() {
         OperationRequest req = new OperationRequest(
-                "uuid-p2p-001", "P2P_TRANSFER", "SAVINGS", "300.00", "5.00", "P2P-001", "");
+                "uuid-p2p-001", "P2P_TRANSFER", "SAVINGS", null, "300.00", "5.00", "P2P-001", "");
 
         PostOperationResponse resp = rulesService.postOperation(req);
 
@@ -71,9 +71,9 @@ class AccountingRulesServiceTest {
     }
 
     @Test
-    void p2pSinComisionOmiteLineasComisionYSigueCuadrando() {
+    void p2pMismoTipoSinComisionOmiteLineasComisionYSigueCuadrando() {
         OperationRequest req = new OperationRequest(
-                "uuid-p2p-002", "P2P_TRANSFER", "SAVINGS", "300.00", "0.00", "P2P-002", "");
+                "uuid-p2p-002", "P2P_TRANSFER", "SAVINGS", null, "300.00", "0.00", "P2P-002", "");
 
         PostOperationResponse resp = rulesService.postOperation(req);
 
@@ -84,9 +84,43 @@ class AccountingRulesServiceTest {
     }
 
     @Test
+    void p2pCruzadoSavingsToCheckingUsaReglaCorrecta() {
+        OperationRequest req = new OperationRequest(
+                "uuid-p2p-cross-001", "P2P_TRANSFER", "SAVINGS", "CHECKING", "400.00", "3.00", "P2P-X-001", "");
+
+        PostOperationResponse resp = rulesService.postOperation(req);
+
+        assertThat(resp.status()).isEqualTo("REGISTRADO");
+        assertThat(resp.commissionAmount()).isEqualByComparingTo(new BigDecimal("3.00"));
+        assertThat(resp.ivaAmount()).isEqualByComparingTo(new BigDecimal("0.45"));
+        assertThat(resp.totalDebited()).isEqualByComparingTo(new BigDecimal("403.45"));
+    }
+
+    @Test
+    void p2pCruzadoCheckingToSavingsUsaReglaCorrecta() {
+        OperationRequest req = new OperationRequest(
+                "uuid-p2p-cross-002", "P2P_TRANSFER", "CHECKING", "SAVINGS", "250.00", "2.00", "P2P-X-002", "");
+
+        PostOperationResponse resp = rulesService.postOperation(req);
+
+        assertThat(resp.status()).isEqualTo("REGISTRADO");
+        assertThat(resp.commissionAmount()).isEqualByComparingTo(new BigDecimal("2.00"));
+    }
+
+    @Test
+    void p2pDestinationIgualASourceTrataComoMismoTipo() {
+        OperationRequest req = new OperationRequest(
+                "uuid-p2p-same-003", "P2P_TRANSFER", "SAVINGS", "SAVINGS", "100.00", null, "P2P-S-003", "");
+
+        PostOperationResponse resp = rulesService.postOperation(req);
+
+        assertThat(resp.status()).isEqualTo("REGISTRADO");
+    }
+
+    @Test
     void operacionDesconocidaLanzaIllegalArgument() {
         OperationRequest req = new OperationRequest(
-                "uuid-bad-001", "OPERACION_INEXISTENTE", null, "100.00", null, "REF", null);
+                "uuid-bad-001", "OPERACION_INEXISTENTE", null, null, "100.00", null, "REF", null);
 
         assertThatThrownBy(() -> rulesService.postOperation(req))
                 .isInstanceOf(AccountingValidationException.class)
@@ -96,7 +130,7 @@ class AccountingRulesServiceTest {
     @Test
     void amountVacioLanzaIllegalArgument() {
         OperationRequest req = new OperationRequest(
-                "uuid-noamt-001", "TELLER_DEPOSIT", null, "", null, "REF", null);
+                "uuid-noamt-001", "TELLER_DEPOSIT", null, null, "", null, "REF", null);
 
         assertThatThrownBy(() -> rulesService.postOperation(req))
                 .isInstanceOf(AccountingValidationException.class);
@@ -105,16 +139,16 @@ class AccountingRulesServiceTest {
     @Test
     void uuidVacioLanzaIllegalArgument() {
         OperationRequest req = new OperationRequest(
-                "", "TELLER_DEPOSIT", null, "100.00", null, "REF", null);
+                "", "TELLER_DEPOSIT", null, null, "100.00", null, "REF", null);
 
         assertThatThrownBy(() -> rulesService.postOperation(req))
                 .isInstanceOf(AccountingValidationException.class);
     }
 
     @Test
-    void operationTypVacioLanzaIllegalArgument() {
+    void operationTypeVacioLanzaIllegalArgument() {
         OperationRequest req = new OperationRequest(
-                "uuid-notype-001", "", null, "100.00", null, "REF", null);
+                "uuid-notype-001", "", null, null, "100.00", null, "REF", null);
 
         assertThatThrownBy(() -> rulesService.postOperation(req))
                 .isInstanceOf(AccountingValidationException.class);

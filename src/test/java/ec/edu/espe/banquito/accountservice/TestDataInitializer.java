@@ -74,6 +74,22 @@ public class TestDataInitializer implements CommandLineRunner {
                         line("4.1.0.01", CREDITO, COMMISSION),
                         line("2.1.0.01", DEBITO,  IVA_ON_COMMISSION),
                         line("2.2.0.01", CREDITO, IVA_ON_COMMISSION)
+                ),
+                buildRule("P2P_TRANSFER_SAVINGS_TO_CHECKING", "Transferencia P2P ahorros → corriente",
+                        line("2.1.0.01", DEBITO,  PRINCIPAL),
+                        line("2.1.0.02", CREDITO, PRINCIPAL),
+                        line("2.1.0.01", DEBITO,  COMMISSION),
+                        line("4.1.0.01", CREDITO, COMMISSION),
+                        line("2.1.0.01", DEBITO,  IVA_ON_COMMISSION),
+                        line("2.2.0.01", CREDITO, IVA_ON_COMMISSION)
+                ),
+                buildRule("P2P_TRANSFER_CHECKING_TO_SAVINGS", "Transferencia P2P corriente → ahorros",
+                        line("2.1.0.02", DEBITO,  PRINCIPAL),
+                        line("2.1.0.01", CREDITO, PRINCIPAL),
+                        line("2.1.0.02", DEBITO,  COMMISSION),
+                        line("4.1.0.01", CREDITO, COMMISSION),
+                        line("2.1.0.02", DEBITO,  IVA_ON_COMMISSION),
+                        line("2.2.0.01", CREDITO, IVA_ON_COMMISSION)
                 )
         ));
     }
