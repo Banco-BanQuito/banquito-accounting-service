@@ -59,15 +59,15 @@ public class TestDataInitializer implements CommandLineRunner {
         parameterService.setParameter(ParameterService.IVA_RATE, "0.15");
 
         ruleRepository.saveAll(List.of(
-                buildRule("TELLER_DEPOSIT", "Depósito en ventanilla",
+                buildRule("TELLER_DEPOSIT_SAVINGS", "Depósito ventanilla → ahorros",
                         line("1.1.0.02", DEBITO,  PRINCIPAL),
                         line("2.1.0.01", CREDITO, PRINCIPAL)
                 ),
-                buildRule("TELLER_WITHDRAWAL", "Retiro en ventanilla",
+                buildRule("TELLER_WITHDRAWAL_SAVINGS", "Retiro ventanilla ← ahorros",
                         line("2.1.0.01", DEBITO,  PRINCIPAL),
                         line("1.1.0.02", CREDITO, PRINCIPAL)
                 ),
-                buildRule("P2P_TRANSFER", "Transferencia P2P",
+                buildRule("P2P_TRANSFER_SAVINGS", "Transferencia P2P entre ahorros",
                         line("2.1.0.01", DEBITO,  PRINCIPAL),
                         line("2.1.0.01", CREDITO, PRINCIPAL),
                         line("2.1.0.01", DEBITO,  COMMISSION),

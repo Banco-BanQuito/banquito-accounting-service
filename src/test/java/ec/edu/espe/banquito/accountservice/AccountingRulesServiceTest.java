@@ -3,9 +3,11 @@ package ec.edu.espe.banquito.accountservice;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import ec.edu.espe.banquito.accountservice.dto.JournalEntryResponse;
 import ec.edu.espe.banquito.accountservice.dto.OperationRequest;
+import ec.edu.espe.banquito.accountservice.dto.PostOperationResponse;
+import ec.edu.espe.banquito.accountservice.exception.AccountingValidationException;
 import ec.edu.espe.banquito.accountservice.service.AccountingRulesService;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,30 +25,34 @@ class AccountingRulesServiceTest {
         OperationRequest req = new OperationRequest(
                 "uuid-rd-001", "TELLER_DEPOSIT", "SAVINGS", "500.00", "", "DEP-001", "");
 
-        JournalEntryResponse resp = rulesService.postOperation(req);
+        PostOperationResponse resp = rulesService.postOperation(req);
 
         assertThat(resp.status()).isEqualTo("REGISTRADO");
         assertThat(resp.validationResult()).isEqualTo("SUMA_CERO_OK");
         assertThat(resp.entryId()).isNotNull();
+        assertThat(resp.commissionAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(resp.ivaAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(resp.totalDebited()).isEqualByComparingTo(new BigDecimal("500.00"));
     }
 
     @Test
     void tellerWithdrawalRegistraAsientoBalanceado() {
         OperationRequest req = new OperationRequest(
-                "uuid-rw-001", "TELLER_WITHDRAWAL", null, "200.00", null, "WIT-001", null);
+                "uuid-rw-001", "TELLER_WITHDRAWAL", "SAVINGS", "200.00", null, "WIT-001", null);
 
-        JournalEntryResponse resp = rulesService.postOperation(req);
+        PostOperationResponse resp = rulesService.postOperation(req);
 
         assertThat(resp.status()).isEqualTo("REGISTRADO");
+        assertThat(resp.totalDebited()).isEqualByComparingTo(new BigDecimal("200.00"));
     }
 
     @Test
     void postOperationEsIdempotentePorUuid() {
         OperationRequest req = new OperationRequest(
-                "uuid-rd-idem-001", "TELLER_DEPOSIT", null, "300.00", null, "REF", null);
+                "uuid-rd-idem-001", "TELLER_DEPOSIT", "SAVINGS", "300.00", null, "REF", null);
 
-        JournalEntryResponse first = rulesService.postOperation(req);
-        JournalEntryResponse second = rulesService.postOperation(req);
+        PostOperationResponse first = rulesService.postOperation(req);
+        PostOperationResponse second = rulesService.postOperation(req);
 
         assertThat(second.entryId()).isEqualTo(first.entryId());
     }
@@ -56,9 +62,12 @@ class AccountingRulesServiceTest {
         OperationRequest req = new OperationRequest(
                 "uuid-p2p-001", "P2P_TRANSFER", "SAVINGS", "300.00", "5.00", "P2P-001", "");
 
-        JournalEntryResponse resp = rulesService.postOperation(req);
+        PostOperationResponse resp = rulesService.postOperation(req);
 
         assertThat(resp.status()).isEqualTo("REGISTRADO");
+        assertThat(resp.commissionAmount()).isEqualByComparingTo(new BigDecimal("5.00"));
+        assertThat(resp.ivaAmount()).isEqualByComparingTo(new BigDecimal("0.75"));
+        assertThat(resp.totalDebited()).isEqualByComparingTo(new BigDecimal("305.75"));
     }
 
     @Test
@@ -66,9 +75,12 @@ class AccountingRulesServiceTest {
         OperationRequest req = new OperationRequest(
                 "uuid-p2p-002", "P2P_TRANSFER", "SAVINGS", "300.00", "0.00", "P2P-002", "");
 
-        JournalEntryResponse resp = rulesService.postOperation(req);
+        PostOperationResponse resp = rulesService.postOperation(req);
 
         assertThat(resp.status()).isEqualTo("REGISTRADO");
+        assertThat(resp.commissionAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(resp.ivaAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(resp.totalDebited()).isEqualByComparingTo(new BigDecimal("300.00"));
     }
 
     @Test
@@ -77,7 +89,7 @@ class AccountingRulesServiceTest {
                 "uuid-bad-001", "OPERACION_INEXISTENTE", null, "100.00", null, "REF", null);
 
         assertThatThrownBy(() -> rulesService.postOperation(req))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(AccountingValidationException.class)
                 .hasMessageContaining("Sin regla contable");
     }
 
@@ -87,7 +99,7 @@ class AccountingRulesServiceTest {
                 "uuid-noamt-001", "TELLER_DEPOSIT", null, "", null, "REF", null);
 
         assertThatThrownBy(() -> rulesService.postOperation(req))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(AccountingValidationException.class);
     }
 
     @Test
@@ -96,7 +108,7 @@ class AccountingRulesServiceTest {
                 "", "TELLER_DEPOSIT", null, "100.00", null, "REF", null);
 
         assertThatThrownBy(() -> rulesService.postOperation(req))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(AccountingValidationException.class);
     }
 
     @Test
@@ -105,6 +117,6 @@ class AccountingRulesServiceTest {
                 "uuid-notype-001", "", null, "100.00", null, "REF", null);
 
         assertThatThrownBy(() -> rulesService.postOperation(req))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(AccountingValidationException.class);
     }
 }
