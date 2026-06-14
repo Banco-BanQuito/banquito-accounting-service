@@ -4,6 +4,7 @@ import ec.edu.espe.banquito.accountservice.dto.JournalEntryLineRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryResponse;
 import ec.edu.espe.banquito.accountservice.dto.OperationRequest;
+import ec.edu.espe.banquito.accountservice.dto.PostOperationResponse;
 import ec.edu.espe.banquito.accountservice.grpc.proto.AccountingEntryRequest;
 import ec.edu.espe.banquito.accountservice.grpc.proto.AccountingEntryResponse;
 import ec.edu.espe.banquito.accountservice.grpc.proto.AccountingOperationRequest;
@@ -59,7 +60,7 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
                     request.getReference(),
                     request.getAccountingDate());
 
-            JournalEntryResponse result = accountingRulesService.postOperation(dto);
+            PostOperationResponse result = accountingRulesService.postOperation(dto);
             responseObserver.onNext(toResponse(result));
             responseObserver.onCompleted();
         } catch (IllegalArgumentException e) {
@@ -96,6 +97,19 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
                 .setStatus(result.status())
                 .setValidationResult(result.validationResult())
                 .setRegisteredAt(result.registeredAt().toString())
+                .build();
+    }
+
+    private AccountingEntryResponse toResponse(PostOperationResponse result) {
+        return AccountingEntryResponse.newBuilder()
+                .setEntryId(result.entryId())
+                .setEntryUuid(result.entryUuid())
+                .setStatus(result.status())
+                .setValidationResult(result.validationResult())
+                .setRegisteredAt(result.registeredAt().toString())
+                .setCommissionAmount(result.commissionAmount().toPlainString())
+                .setIvaAmount(result.ivaAmount().toPlainString())
+                .setTotalDebited(result.totalDebited().toPlainString())
                 .build();
     }
 }

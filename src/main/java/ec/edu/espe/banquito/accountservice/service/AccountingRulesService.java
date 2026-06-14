@@ -2,9 +2,8 @@ package ec.edu.espe.banquito.accountservice.service;
 
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryLineRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryRequest;
-import ec.edu.espe.banquito.accountservice.dto.JournalEntryResponse;
 import ec.edu.espe.banquito.accountservice.dto.OperationRequest;
-import ec.edu.espe.banquito.accountservice.enums.AmountComponent;
+import ec.edu.espe.banquito.accountservice.dto.PostOperationResponse;
 import ec.edu.espe.banquito.accountservice.model.AccountingRule;
 import ec.edu.espe.banquito.accountservice.model.AccountingRuleLine;
 import ec.edu.espe.banquito.accountservice.repository.AccountingRuleRepository;
@@ -33,48 +32,62 @@ public class AccountingRulesService {
     }
 
     @Transactional
-    public JournalEntryResponse postOperation(OperationRequest request) {
+    public PostOperationResponse postOperation(OperationRequest request) {
         validateRequest(request);
 
         LocalDate contableDate = (request.accountingDate() == null || request.accountingDate().isBlank())
                 ? parameterService.getActiveContableDate()
                 : parseAccountingDate(request.accountingDate());
 
+        String effectiveType = (request.accountProductType() != null && !request.accountProductType().isBlank())
+                ? request.operationType() + "_" + request.accountProductType()
+                : request.operationType();
+
         AccountingRule rule = ruleRepository
-                .findActiveByType(request.operationType(), contableDate)
+                .findActiveByType(effectiveType, contableDate)
                 .stream().findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Sin regla contable para '" + request.operationType() + "' el " + contableDate));
+                        "Sin regla contable para '" + effectiveType + "' el " + contableDate));
 
         BigDecimal principal = new BigDecimal(request.amount());
         BigDecimal commission = (request.commissionAmount() == null || request.commissionAmount().isBlank())
                 ? BigDecimal.ZERO : new BigDecimal(request.commissionAmount());
-        BigDecimal ivaRate = parameterService.getIvaRate();
+        BigDecimal ivaAmount = commission.multiply(parameterService.getIvaRate()).setScale(2, RoundingMode.HALF_UP);
 
         List<JournalEntryLineRequest> lines = rule.getLines().stream()
-                .map(l -> toLineRequest(l, principal, commission, ivaRate, request.reference()))
+                .map(l -> toLineRequest(l, principal, commission, ivaAmount, request.reference()))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();
 
         if (lines.isEmpty()) {
             throw new IllegalArgumentException(
-                    "La operación '" + request.operationType() + "' genera asiento vacío con los montos dados.");
+                    "La operación '" + effectiveType + "' genera asiento vacío con los montos dados.");
         }
 
-        return accountingService.registerEntry(new JournalEntryRequest(
+        var entry = accountingService.registerEntry(new JournalEntryRequest(
                 request.operationUuid(),
-                request.operationType() + " | " + request.reference(),
+                effectiveType + " | " + request.reference(),
                 contableDate,
                 lines));
+
+        return new PostOperationResponse(
+                entry.entryId(),
+                entry.entryUuid(),
+                entry.status(),
+                entry.validationResult(),
+                entry.registeredAt(),
+                commission,
+                ivaAmount,
+                principal.add(commission).add(ivaAmount));
     }
 
     private Optional<JournalEntryLineRequest> toLineRequest(AccountingRuleLine line,
-            BigDecimal principal, BigDecimal commission, BigDecimal ivaRate, String reference) {
+            BigDecimal principal, BigDecimal commission, BigDecimal ivaAmount, String reference) {
         BigDecimal amount = switch (line.getAmountComponent()) {
             case PRINCIPAL -> principal;
             case COMMISSION -> commission;
-            case IVA_ON_COMMISSION -> commission.multiply(ivaRate).setScale(2, RoundingMode.HALF_UP);
+            case IVA_ON_COMMISSION -> ivaAmount;
         };
         if (line.isSkipIfZero() && amount.compareTo(BigDecimal.ZERO) == 0) {
             return Optional.empty();

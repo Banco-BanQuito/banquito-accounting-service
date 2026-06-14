@@ -43,4 +43,7 @@ message AccountingEntryResponse {
   string status = 3;
   string validation_result = 4;
   string registered_at = 5;
+  string commission_amount = 6;
+  string iva_amount = 7;
+  string total_debited = 8;
 }
