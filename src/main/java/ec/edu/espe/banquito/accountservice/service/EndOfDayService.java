@@ -42,7 +42,7 @@ public class EndOfDayService {
                 ? request.contableDate()
                 : parameterService.getActiveContableDate();
 
-        TrialBalanceResponse balance = accountingService.trialBalance(contableDate);
+        TrialBalanceResponse balance = accountingService.structuralTrialBalance(contableDate);
 
         if (!balance.balanced()) {
             throw new EodNotBalancedException(
@@ -66,7 +66,7 @@ public class EndOfDayService {
 
     private String writeTrialBalanceCsv(LocalDate date, TrialBalanceResponse balance) {
         List<String> rows = new ArrayList<>();
-        rows.add("code,name,debitBalance,creditBalance");
+        rows.add("Código de Cuenta,Nombre de Cuenta,Saldo Deudor,Saldo Acreedor");
         for (TrialBalanceAccountDto account : balance.accounts()) {
             rows.add(String.join(",",
                     account.code(),

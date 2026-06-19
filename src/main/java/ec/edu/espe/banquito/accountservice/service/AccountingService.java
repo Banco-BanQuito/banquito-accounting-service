@@ -1,9 +1,7 @@
 package ec.edu.espe.banquito.accountservice.service;
 
-import ec.edu.espe.banquito.accountservice.model.AccountingAccount;
+import ec.edu.espe.banquito.accountservice.enums.AccountType;
 import ec.edu.espe.banquito.accountservice.enums.EntryStatus;
-import ec.edu.espe.banquito.accountservice.model.JournalEntry;
-import ec.edu.espe.banquito.accountservice.model.JournalEntryLine;
 import ec.edu.espe.banquito.accountservice.enums.MovementType;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryLineRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryRequest;
@@ -13,12 +11,17 @@ import ec.edu.espe.banquito.accountservice.dto.TrialBalanceResponse;
 import ec.edu.espe.banquito.accountservice.exception.AccountingValidationException;
 import ec.edu.espe.banquito.accountservice.exception.InvalidAccountException;
 import ec.edu.espe.banquito.accountservice.exception.UnbalancedEntryException;
+import ec.edu.espe.banquito.accountservice.model.AccountingAccount;
+import ec.edu.espe.banquito.accountservice.model.JournalEntry;
+import ec.edu.espe.banquito.accountservice.model.JournalEntryLine;
 import ec.edu.espe.banquito.accountservice.repository.AccountingAccountRepository;
 import ec.edu.espe.banquito.accountservice.repository.JournalEntryRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,6 +83,40 @@ public class AccountingService {
 
         List<TrialBalanceAccountDto> accounts = accountRepository.findAllByOrderByAccountCodeAsc().stream()
                 .map(this::toTrialBalanceRow)
+                .toList();
+
+        BigDecimal totalDebits = accounts.stream()
+                .map(TrialBalanceAccountDto::debitBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalCredits = accounts.stream()
+                .map(TrialBalanceAccountDto::creditBalance)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new TrialBalanceResponse(contableDate, accounts, totalDebits, totalCredits,
+                totalDebits.compareTo(totalCredits) == 0);
+    }
+
+    @Transactional(readOnly = true)
+    public TrialBalanceResponse structuralTrialBalance(LocalDate date) {
+        LocalDate contableDate = date != null ? date : parameterService.getActiveContableDate();
+
+        Map<String, BigDecimal> balanceByClass = accountRepository
+                .findByAccountTypeOrderByAccountCodeAsc(AccountType.DETALLE)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        AccountingAccount::getAccountClass,
+                        Collectors.reducing(BigDecimal.ZERO, AccountingAccount::getCurrentBalance, BigDecimal::add)));
+
+        List<TrialBalanceAccountDto> accounts = accountRepository
+                .findByAccountTypeOrderByAccountCodeAsc(AccountType.ESTRUCTURAL)
+                .stream()
+                .filter(a -> a.getParentAccountCode() == null || a.getParentAccountCode().isBlank())
+                .map(a -> {
+                    BigDecimal balance = balanceByClass.getOrDefault(a.getAccountClass(), BigDecimal.ZERO);
+                    BigDecimal debit = balance.signum() >= 0 ? balance : BigDecimal.ZERO;
+                    BigDecimal credit = balance.signum() < 0 ? balance.negate() : BigDecimal.ZERO;
+                    return new TrialBalanceAccountDto(a.getAccountCode(), a.getName(), debit, credit);
+                })
                 .toList();
 
         BigDecimal totalDebits = accounts.stream()

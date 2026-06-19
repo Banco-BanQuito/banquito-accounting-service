@@ -51,7 +51,12 @@ public class AccountingRulesService {
         BigDecimal principal = new BigDecimal(request.amount());
         BigDecimal commission = (request.commissionAmount() == null || request.commissionAmount().isBlank())
                 ? BigDecimal.ZERO : new BigDecimal(request.commissionAmount());
-        BigDecimal ivaAmount = commission.multiply(parameterService.getIvaRate()).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal ivaAmount;
+        if (request.ivaAmount() != null && !request.ivaAmount().isBlank()) {
+            ivaAmount = new BigDecimal(request.ivaAmount());
+        } else {
+            ivaAmount = commission.multiply(parameterService.getIvaRate()).setScale(2, RoundingMode.HALF_UP);
+        }
 
         List<JournalEntryLineRequest> lines = rule.getLines().stream()
                 .map(l -> toLineRequest(l, principal, commission, ivaAmount, request.reference()))

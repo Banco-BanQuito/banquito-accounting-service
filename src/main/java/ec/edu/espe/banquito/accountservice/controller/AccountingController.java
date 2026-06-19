@@ -7,12 +7,16 @@ import ec.edu.espe.banquito.accountservice.dto.JournalEntryResponse;
 import ec.edu.espe.banquito.accountservice.dto.TrialBalanceResponse;
 import ec.edu.espe.banquito.accountservice.service.AccountingService;
 import ec.edu.espe.banquito.accountservice.service.EndOfDayService;
+import ec.edu.espe.banquito.accountservice.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,10 +32,14 @@ public class AccountingController {
 
     private final AccountingService accountingService;
     private final EndOfDayService endOfDayService;
+    private final ReportService reportService;
 
-    public AccountingController(AccountingService accountingService, EndOfDayService endOfDayService) {
+    public AccountingController(AccountingService accountingService,
+                                EndOfDayService endOfDayService,
+                                ReportService reportService) {
         this.accountingService = accountingService;
         this.endOfDayService = endOfDayService;
+        this.reportService = reportService;
     }
 
     @PostMapping("/entries")
@@ -58,5 +66,44 @@ public class AccountingController {
             @RequestParam(value = "date", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(accountingService.trialBalance(date));
+    }
+
+    @GetMapping("/reports/csv")
+    @Operation(summary = "Descargar Balance de Comprobación en CSV",
+            description = "Genera y descarga el Balance de Comprobación en formato CSV para la fecha indicada.")
+    @ApiResponse(responseCode = "200", description = "Archivo CSV")
+    public ResponseEntity<byte[]> downloadCsv(
+            @RequestParam(value = "date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        TrialBalanceResponse balance = accountingService.structuralTrialBalance(date);
+        byte[] csv = reportService.generateCsvBytes(balance);
+        String filename = "balance_" + balance.contableDate() + ".csv";
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                .headers(downloadHeaders(filename))
+                .body(csv);
+    }
+
+    @GetMapping("/reports/pdf")
+    @Operation(summary = "Descargar Balance de Comprobación en PDF",
+            description = "Genera y descarga el Balance de Comprobación en formato PDF para la fecha indicada.")
+    @ApiResponse(responseCode = "200", description = "Archivo PDF")
+    public ResponseEntity<byte[]> downloadPdf(
+            @RequestParam(value = "date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        TrialBalanceResponse balance = accountingService.structuralTrialBalance(date);
+        byte[] pdf = reportService.generatePdfBytes(balance);
+        String filename = "balance_" + balance.contableDate() + ".pdf";
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .headers(downloadHeaders(filename))
+                .body(pdf);
+    }
+
+    private HttpHeaders downloadHeaders(String filename) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentDisposition(
+                ContentDisposition.attachment().filename(filename).build());
+        return headers;
     }
 }

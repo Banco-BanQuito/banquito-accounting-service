@@ -61,7 +61,8 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
                     request.getAmount(),
                     request.getCommissionAmount(),
                     request.getReference(),
-                    request.getAccountingDate());
+                    request.getAccountingDate(),
+                    request.getIvaAmount());
 
             PostOperationResponse result = accountingRulesService.postOperation(dto);
             responseObserver.onNext(toResponse(result));

@@ -36,6 +36,7 @@ message AccountingOperationRequest {
   string reference = 6;
   string accounting_date = 7;
   string destination_account_product_type = 8;
+  string iva_amount = 9;
 }
 
 message AccountingEntryResponse {
