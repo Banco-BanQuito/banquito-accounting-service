@@ -6,6 +6,7 @@ import ec.edu.espe.banquito.accountservice.enums.MovementType;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryLineRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryRequest;
 import ec.edu.espe.banquito.accountservice.dto.JournalEntryResponse;
+import ec.edu.espe.banquito.accountservice.mapper.JournalEntryMapper;
 import ec.edu.espe.banquito.accountservice.dto.TrialBalanceAccountDto;
 import ec.edu.espe.banquito.accountservice.dto.TrialBalanceResponse;
 import ec.edu.espe.banquito.accountservice.exception.AccountingValidationException;
@@ -46,7 +47,7 @@ public class AccountingService {
 
         var existing = journalEntryRepository.findByEntryUuid(request.entryUuid());
         if (existing.isPresent()) {
-            return toResponse(existing.get());
+            return JournalEntryMapper.toResponse(existing.get());
         }
 
         validateBalanced(request.lines());
@@ -74,7 +75,7 @@ public class AccountingService {
             entry.addLine(line);
         }
 
-        return toResponse(journalEntryRepository.save(entry));
+        return JournalEntryMapper.toResponse(journalEntryRepository.save(entry));
     }
 
     @Transactional(readOnly = true)
@@ -182,12 +183,4 @@ public class AccountingService {
         }
     }
 
-    private JournalEntryResponse toResponse(JournalEntry entry) {
-        return new JournalEntryResponse(
-                entry.getId(),
-                entry.getEntryUuid(),
-                entry.getStatus().name(),
-                "SUMA_CERO_OK",
-                entry.getEntryDate());
-    }
 }
