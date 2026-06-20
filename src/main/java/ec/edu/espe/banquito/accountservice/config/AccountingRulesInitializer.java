@@ -138,6 +138,24 @@ public class AccountingRulesInitializer implements CommandLineRunner {
                 line(COMISIONES,    CREDITO, COMMISSION),
                 line(CORRIENTES,    DEBITO,  IVA_ON_COMMISSION),
                 line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
+            ),
+
+            // EXTERNAL_TRANSFER — transferencia interbancaria individual hacia otro banco
+            buildRule("EXTERNAL_TRANSFER_SAVINGS", "Transferencia interbancaria ← cuenta de ahorros",
+                line(AHORROS,       DEBITO,  PRINCIPAL),
+                line(BANCO_CENTRAL, CREDITO, PRINCIPAL),
+                line(AHORROS,       DEBITO,  COMMISSION),
+                line(COMISIONES,    CREDITO, COMMISSION),
+                line(AHORROS,       DEBITO,  IVA_ON_COMMISSION),
+                line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
+            ),
+            buildRule("EXTERNAL_TRANSFER_CHECKING", "Transferencia interbancaria ← cuenta corriente",
+                line(CORRIENTES,    DEBITO,  PRINCIPAL),
+                line(BANCO_CENTRAL, CREDITO, PRINCIPAL),
+                line(CORRIENTES,    DEBITO,  COMMISSION),
+                line(COMISIONES,    CREDITO, COMMISSION),
+                line(CORRIENTES,    DEBITO,  IVA_ON_COMMISSION),
+                line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
             )
         );
 
