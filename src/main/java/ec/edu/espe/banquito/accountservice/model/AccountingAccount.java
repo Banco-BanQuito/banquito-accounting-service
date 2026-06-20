@@ -5,9 +5,9 @@ import ec.edu.espe.banquito.accountservice.enums.MovementType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "accounting_account")
@@ -35,15 +35,9 @@ public class AccountingAccount {
     @Column(name = "current_balance", nullable = false, precision = 15, scale = 2)
     private BigDecimal currentBalance = BigDecimal.ZERO;
 
+    @CreationTimestamp
     @Column(name = "creation_date", nullable = false)
     private LocalDateTime creationDate;
-
-    @PrePersist
-    protected void onCreate() {
-        if (this.creationDate == null) {
-            this.creationDate = LocalDateTime.now(ZoneOffset.UTC);
-        }
-    }
 
     public void applyMovement(MovementType movementType, BigDecimal amount) {
         if (movementType == MovementType.DEBITO) {
