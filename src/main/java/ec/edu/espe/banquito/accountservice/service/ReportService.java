@@ -19,6 +19,7 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,7 +81,7 @@ public class ReportService {
             Font balanceFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, balanceColor);
 
             Paragraph meta = new Paragraph("Fecha contable: " + balance.contableDate()
-                    + "     Generado: " + LocalDateTime.now().format(DT_FMT)
+                    + "     Generado: " + LocalDateTime.now(ZoneId.systemDefault()).format(DT_FMT)
                     + "     Estado: ", subtitleFont);
             meta.add(new Phrase(balanceLabel, balanceFont));
             meta.setAlignment(Element.ALIGN_CENTER);
