@@ -81,7 +81,7 @@ public class ReportService {
             Font balanceFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, balanceColor);
 
             Paragraph meta = new Paragraph("Fecha contable: " + balance.contableDate()
-                    + "     Generado: " + LocalDateTime.now(ZoneId.systemDefault()).format(DT_FMT)
+                    + "     Generado: " + LocalDateTime.now(ZoneId.of("America/Guayaquil")).format(DT_FMT)
                     + "     Estado: ", subtitleFont);
             meta.add(new Phrase(balanceLabel, balanceFont));
             meta.setAlignment(Element.ALIGN_CENTER);
