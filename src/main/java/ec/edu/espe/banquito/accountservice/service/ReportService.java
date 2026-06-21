@@ -53,7 +53,7 @@ public class ReportService {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4);
 
-        try {
+        try (AutoCloseable closer = () -> { if (document.isOpen()) document.close(); }) {
             PdfWriter.getInstance(document, out);
             document.open();
 
@@ -140,8 +140,8 @@ public class ReportService {
             footer.setSpacingBefore(20);
             document.add(footer);
 
-        } finally {
-            document.close();
+        } catch (Exception e) {
+            throw new IllegalStateException("Error generando el PDF del balance de comprobación", e);
         }
 
         return out.toByteArray();
