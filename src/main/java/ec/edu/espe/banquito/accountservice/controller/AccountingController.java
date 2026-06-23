@@ -68,6 +68,15 @@ public class AccountingController {
         return ResponseEntity.ok(accountingService.trialBalance(date));
     }
 
+    @PostMapping("/auto-balance")
+    @Operation(summary = "Cuadrar balance automaticamente", description = "Si el Balance de Comprobacion no cuadra, registra un asiento de ajuste contra la cuenta 5.1.0.02 (Ajustes de Cuadre Contable) por la diferencia exacta. No afecta el historial de asientos previos.")
+    @ApiResponse(responseCode = "200", description = "Balance cuadrado (o ya estaba cuadrado)")
+    public ResponseEntity<TrialBalanceResponse> autoBalance(
+            @RequestParam(value = "date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(accountingService.autoBalance(date));
+    }
+
     @GetMapping("/reports/csv")
     @Operation(summary = "Descargar Balance de Comprobación en CSV",
             description = "Genera y descarga el Balance de Comprobación en formato CSV para la fecha indicada.")

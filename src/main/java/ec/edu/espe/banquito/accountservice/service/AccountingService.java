@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -95,6 +96,45 @@ public class AccountingService {
 
         return new TrialBalanceResponse(contableDate, accounts, totalDebits, totalCredits,
                 totalDebits.compareTo(totalCredits) == 0);
+    }
+
+    private static final String ADJUSTMENT_ACCOUNT_CODE = "5.1.0.02";
+
+    @Transactional
+    public TrialBalanceResponse autoBalance(LocalDate date) {
+        TrialBalanceResponse current = trialBalance(date);
+        BigDecimal diff = current.totalDebits().subtract(current.totalCredits());
+
+        if (diff.compareTo(BigDecimal.ZERO) == 0) {
+            return current;
+        }
+
+        AccountingAccount adjustmentAccount = accountRepository.findById(ADJUSTMENT_ACCOUNT_CODE)
+                .orElseThrow(() -> new InvalidAccountException(
+                        "Cuenta de ajuste " + ADJUSTMENT_ACCOUNT_CODE + " no existe"));
+
+        MovementType movementType = diff.signum() < 0 ? MovementType.DEBITO : MovementType.CREDITO;
+        BigDecimal amount = diff.abs();
+
+        adjustmentAccount.applyMovement(movementType, amount);
+        accountRepository.save(adjustmentAccount);
+
+        JournalEntry entry = new JournalEntry();
+        entry.setEntryUuid(UUID.randomUUID().toString());
+        entry.setDescription("Ajuste automatico de cuadre EOD");
+        entry.setEntryDate(LocalDateTime.now());
+        entry.setStatus(EntryStatus.REGISTRADO);
+
+        JournalEntryLine line = new JournalEntryLine();
+        line.setAccount(adjustmentAccount);
+        line.setMovementType(movementType);
+        line.setAmount(amount);
+        line.setReference("AUTO-BALANCE");
+        entry.addLine(line);
+
+        journalEntryRepository.save(entry);
+
+        return trialBalance(date);
     }
 
     @Transactional(readOnly = true)
