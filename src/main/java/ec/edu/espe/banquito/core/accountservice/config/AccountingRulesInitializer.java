@@ -134,6 +134,15 @@ public class AccountingRulesInitializer implements CommandLineRunner {
                 line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
             ),
 
+            buildRule("CORPORATE_REFUND_CHECKING", "Devolución corporativa → cuenta corriente",
+                line(BANCO_CENTRAL, DEBITO,  PRINCIPAL),
+                line(CORRIENTES,    CREDITO, PRINCIPAL),
+                line(CORRIENTES,    DEBITO,  COMMISSION),
+                line(COMISIONES,    CREDITO, COMMISSION),
+                line(CORRIENTES,    DEBITO,  IVA_ON_COMMISSION),
+                line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
+            ),
+
             buildRule("EXTERNAL_TRANSFER_SAVINGS", "Transferencia interbancaria ← cuenta de ahorros",
                 line(AHORROS,       DEBITO,  PRINCIPAL),
                 line(BANCO_CENTRAL, CREDITO, PRINCIPAL),
