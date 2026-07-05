@@ -158,6 +158,11 @@ public class AccountingRulesInitializer implements CommandLineRunner {
                 line(COMISIONES,    CREDITO, COMMISSION),
                 line(CORRIENTES,    DEBITO,  IVA_ON_COMMISSION),
                 line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
+            ),
+
+            buildRule("OFFUS_SETTLEMENT", "Liquidación de compensación interbancaria (off-us)",
+                line(BANCO_CENTRAL, DEBITO,  PRINCIPAL),
+                line(BOVEDA,        CREDITO, PRINCIPAL)
             )
         );
 
