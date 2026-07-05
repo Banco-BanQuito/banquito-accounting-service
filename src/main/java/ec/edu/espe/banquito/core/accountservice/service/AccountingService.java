@@ -109,7 +109,7 @@ public class AccountingService {
             return current;
         }
 
-        AccountingAccount adjustmentAccount = accountRepository.findById(ADJUSTMENT_ACCOUNT_CODE)
+        AccountingAccount adjustmentAccount = accountRepository.findByIdForUpdate(ADJUSTMENT_ACCOUNT_CODE)
                 .orElseThrow(() -> new InvalidAccountException(
                         "Cuenta de ajuste " + ADJUSTMENT_ACCOUNT_CODE + " no existe"));
 
@@ -179,7 +179,7 @@ public class AccountingService {
     }
 
     private AccountingAccount resolveDetailAccount(String code) {
-        AccountingAccount account = accountRepository.findById(code)
+        AccountingAccount account = accountRepository.findByIdForUpdate(code)
                 .orElseThrow(() -> new InvalidAccountException("La cuenta " + code + " no existe en el Plan de Cuentas."));
         if (!account.isDetail()) {
             throw new InvalidAccountException("La cuenta " + code + " no es de tipo DETALLE; no puede recibir asientos.");
