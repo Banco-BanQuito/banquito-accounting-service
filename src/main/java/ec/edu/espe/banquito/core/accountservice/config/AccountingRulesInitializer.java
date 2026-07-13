@@ -134,12 +134,30 @@ public class AccountingRulesInitializer implements CommandLineRunner {
                 line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
             ),
 
+            buildRule("CORPORATE_DEBIT_SAVINGS", "Débito corporativo ← cuenta de ahorros",
+                line(AHORROS,       DEBITO,  PRINCIPAL),
+                line(BANCO_CENTRAL, CREDITO, PRINCIPAL),
+                line(AHORROS,       DEBITO,  COMMISSION),
+                line(COMISIONES,    CREDITO, COMMISSION),
+                line(AHORROS,       DEBITO,  IVA_ON_COMMISSION),
+                line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
+            ),
+
             buildRule("CORPORATE_REFUND_CHECKING", "Devolución corporativa → cuenta corriente",
                 line(BANCO_CENTRAL, DEBITO,  PRINCIPAL),
                 line(CORRIENTES,    CREDITO, PRINCIPAL),
                 line(CORRIENTES,    DEBITO,  COMMISSION),
                 line(COMISIONES,    CREDITO, COMMISSION),
                 line(CORRIENTES,    DEBITO,  IVA_ON_COMMISSION),
+                line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
+            ),
+
+            buildRule("CORPORATE_REFUND_SAVINGS", "Devolución corporativa → cuenta de ahorros",
+                line(BANCO_CENTRAL, DEBITO,  PRINCIPAL),
+                line(AHORROS,       CREDITO, PRINCIPAL),
+                line(AHORROS,       DEBITO,  COMMISSION),
+                line(COMISIONES,    CREDITO, COMMISSION),
+                line(AHORROS,       DEBITO,  IVA_ON_COMMISSION),
                 line(IVA_POR_PAGAR, CREDITO, IVA_ON_COMMISSION)
             ),
 
