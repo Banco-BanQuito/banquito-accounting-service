@@ -2,6 +2,7 @@ package ec.edu.espe.banquito.core.accountservice.controller;
 
 import ec.edu.espe.banquito.core.accountservice.dto.EodRequest;
 import ec.edu.espe.banquito.core.accountservice.dto.EodResponse;
+import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryDetailDto;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryRequest;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryResponse;
 import ec.edu.espe.banquito.core.accountservice.dto.TrialBalanceResponse;
@@ -13,12 +14,16 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -58,6 +63,43 @@ public class AccountingController {
         return ResponseEntity.ok(endOfDayService.runEndOfDay(request));
     }
 
+    @GetMapping("/entries")
+    @Operation(summary = "Listar asientos contables", description = "Devuelve los asientos contables paginados, con sus movimientos, si cuadran y su reverso (si aplica). Filtros opcionales por fecha, estado y cuenta.")
+    @ApiResponse(responseCode = "200", description = "Página de asientos devuelta")
+    public ResponseEntity<Page<JournalEntryDetailDto>> listEntries(
+            @Parameter(description = "Fecha desde (YYYY-MM-DD)", example = "2026-07-01")
+            @RequestParam(value = "from", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @Parameter(description = "Fecha hasta (YYYY-MM-DD)", example = "2026-07-15")
+            @RequestParam(value = "to", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @Parameter(description = "Estado del asiento (REGISTRADO|ANULADO)", example = "REGISTRADO")
+            @RequestParam(value = "status", required = false) String status,
+            @Parameter(description = "Código de cuenta contable", example = "1.1.0.01")
+            @RequestParam(value = "accountCode", required = false) String accountCode,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(accountingService.listEntries(from, to, status, accountCode, pageable));
+    }
+
+    @GetMapping("/entries/{entryUuid}")
+    @Operation(summary = "Ver detalle de un asiento contable", description = "Devuelve un asiento con sus movimientos, si cuadra y su reverso (si aplica).")
+    @ApiResponse(responseCode = "200", description = "Asiento encontrado")
+    @ApiResponse(responseCode = "404", description = "El asiento no existe")
+    public ResponseEntity<JournalEntryDetailDto> getEntry(@PathVariable String entryUuid) {
+        return ResponseEntity.ok(accountingService.getEntryDetail(entryUuid));
+    }
+
+    @PostMapping("/entries/{entryUuid}/reverse")
+    @Operation(summary = "Revertir un asiento contable", description = "Genera el asiento de reverso (movimientos invertidos) y marca el original como ANULADO.")
+    @ApiResponse(responseCode = "200", description = "Reverso generado")
+    @ApiResponse(responseCode = "404", description = "El asiento no existe")
+    @ApiResponse(responseCode = "409", description = "El asiento ya fue reversado")
+    public ResponseEntity<JournalEntryDetailDto> reverseEntry(@PathVariable String entryUuid) {
+        return ResponseEntity.ok(accountingService.reverseEntry(entryUuid));
+    }
+
     @GetMapping("/trial-balance")
     @Operation(summary = "Balance de Comprobación", description = "Devuelve los saldos deudores y acreedores por cuenta para la fecha indicada (o la fecha contable activa).")
     @ApiResponse(responseCode = "200", description = "Balance devuelto")
@@ -66,15 +108,6 @@ public class AccountingController {
             @RequestParam(value = "date", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(accountingService.trialBalance(date));
-    }
-
-    @PostMapping("/auto-balance")
-    @Operation(summary = "Cuadrar balance automaticamente", description = "Si el Balance de Comprobacion no cuadra, registra un asiento de ajuste contra la cuenta 5.1.0.02 (Ajustes de Cuadre Contable) por la diferencia exacta. No afecta el historial de asientos previos.")
-    @ApiResponse(responseCode = "200", description = "Balance cuadrado (o ya estaba cuadrado)")
-    public ResponseEntity<TrialBalanceResponse> autoBalance(
-            @RequestParam(value = "date", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(accountingService.autoBalance(date));
     }
 
     @GetMapping("/reports/csv")

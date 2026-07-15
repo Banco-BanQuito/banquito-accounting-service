@@ -1,5 +1,6 @@
 package ec.edu.espe.banquito.core.accountservice.model;
 
+import ec.edu.espe.banquito.core.accountservice.enums.AccountNature;
 import ec.edu.espe.banquito.core.accountservice.enums.AccountType;
 import ec.edu.espe.banquito.core.accountservice.enums.MovementType;
 import jakarta.persistence.*;
@@ -39,8 +40,15 @@ public class AccountingAccount {
     @Column(name = "creation_date", nullable = false)
     private LocalDateTime creationDate;
 
+    public AccountNature getNature() {
+        return AccountNature.fromClass(this.accountClass);
+    }
+
     public void applyMovement(MovementType movementType, BigDecimal amount) {
-        if (movementType == MovementType.DEBITO) {
+        MovementType ladoQueSuma =
+                getNature() == AccountNature.DEUDORA ? MovementType.DEBITO : MovementType.CREDITO;
+
+        if (movementType == ladoQueSuma) {
             this.currentBalance = this.currentBalance.add(amount);
         } else {
             this.currentBalance = this.currentBalance.subtract(amount);

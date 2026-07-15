@@ -85,16 +85,13 @@ public class PlanDeCuentasInitializer implements CommandLineRunner {
         String parent       = f[4].strip();
         BigDecimal opening  = new BigDecimal(f[5].strip());
 
-        boolean isAcreedora = "PASIVO".equals(accountClass) || "INGRESO".equals(accountClass);
-        BigDecimal signedBalance = isAcreedora ? opening.negate() : opening;
-
         AccountingAccount account = new AccountingAccount();
         account.setAccountCode(code);
         account.setName(name);
         account.setAccountClass(accountClass);
         account.setAccountType(type);
         account.setParentAccountCode(parent.isBlank() ? null : parent);
-        account.setCurrentBalance(signedBalance);
+        account.setCurrentBalance(opening);
         return account;
     }
 }

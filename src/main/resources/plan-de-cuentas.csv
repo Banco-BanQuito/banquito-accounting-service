@@ -4,9 +4,10 @@
 #
 # Formato (delimitador ';'): code;name;type;class;parent;openingBalance
 #   type   : ESTRUCTURAL | DETALLE      (solo DETALLE recibe asientos)
-#   class  : ACTIVO | PASIVO | INGRESO | GASTO
+#   class  : ACTIVO | PASIVO | PATRIMONIO | INGRESO | GASTO
 #   parent : código padre o vacío para cuentas raíz
-#   openingBalance : monto POSITIVO; la clase define el signo interno (PASIVO/INGRESO → negado)
+#   openingBalance : monto POSITIVO; se guarda tal cual en el lado normal de la cuenta.
+#                    La clase define la NATURALEZA (DEUDORA/ACREEDORA); ya NO se niega el signo.
 #
 # Las 13 cuentas reales vienen del seed de infra (05-seed-accountingdb.sql).
 # La cuenta 3.1.0.01 (Patrimonio) es solo para tests H2: hace cuadrar el Balance de arranque.
@@ -25,4 +26,4 @@ code;name;type;class;parent;openingBalance
 4.0.0.00;INGRESOS;ESTRUCTURAL;INGRESO;;0
 4.1.0.00;Ingresos por Servicios;ESTRUCTURAL;INGRESO;4.0.0.00;0
 4.1.0.01;Comisiones por Pagos Masivos;DETALLE;INGRESO;4.1.0.00;0
-3.1.0.01;Patrimonio / Capital Inicial;DETALLE;PASIVO;;1500000.00
+3.1.0.01;Patrimonio / Capital Inicial;DETALLE;PATRIMONIO;;1500000.00

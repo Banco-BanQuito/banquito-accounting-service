@@ -14,9 +14,14 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
     }
 
-    @ExceptionHandler(EodNotBalancedException.class)
-    public ProblemDetail handleConflict(EodNotBalancedException ex) {
+    @ExceptionHandler({EodNotBalancedException.class, EntryAlreadyReversedException.class})
+    public ProblemDetail handleConflict(AccountingException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(EntryNotFoundException.class)
+    public ProblemDetail handleNotFound(EntryNotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(AccountingValidationException.class)

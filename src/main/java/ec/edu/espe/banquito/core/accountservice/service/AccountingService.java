@@ -1,8 +1,10 @@
 package ec.edu.espe.banquito.core.accountservice.service;
 
+import ec.edu.espe.banquito.core.accountservice.enums.AccountNature;
 import ec.edu.espe.banquito.core.accountservice.enums.AccountType;
 import ec.edu.espe.banquito.core.accountservice.enums.EntryStatus;
 import ec.edu.espe.banquito.core.accountservice.enums.MovementType;
+import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryDetailDto;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryLineRequest;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryRequest;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryResponse;
@@ -10,6 +12,8 @@ import ec.edu.espe.banquito.core.accountservice.mapper.JournalEntryMapper;
 import ec.edu.espe.banquito.core.accountservice.dto.TrialBalanceAccountDto;
 import ec.edu.espe.banquito.core.accountservice.dto.TrialBalanceResponse;
 import ec.edu.espe.banquito.core.accountservice.exception.AccountingValidationException;
+import ec.edu.espe.banquito.core.accountservice.exception.EntryAlreadyReversedException;
+import ec.edu.espe.banquito.core.accountservice.exception.EntryNotFoundException;
 import ec.edu.espe.banquito.core.accountservice.exception.InvalidAccountException;
 import ec.edu.espe.banquito.core.accountservice.exception.UnbalancedEntryException;
 import ec.edu.espe.banquito.core.accountservice.model.AccountingAccount;
@@ -17,13 +21,18 @@ import ec.edu.espe.banquito.core.accountservice.model.JournalEntry;
 import ec.edu.espe.banquito.core.accountservice.model.JournalEntryLine;
 import ec.edu.espe.banquito.core.accountservice.repository.AccountingAccountRepository;
 import ec.edu.espe.banquito.core.accountservice.repository.JournalEntryRepository;
+import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -98,45 +107,6 @@ public class AccountingService {
                 totalDebits.compareTo(totalCredits) == 0);
     }
 
-    private static final String ADJUSTMENT_ACCOUNT_CODE = "5.1.0.02";
-
-    @Transactional
-    public TrialBalanceResponse autoBalance(LocalDate date) {
-        TrialBalanceResponse current = trialBalance(date);
-        BigDecimal diff = current.totalDebits().subtract(current.totalCredits());
-
-        if (diff.compareTo(BigDecimal.ZERO) == 0) {
-            return current;
-        }
-
-        AccountingAccount adjustmentAccount = accountRepository.findByIdForUpdate(ADJUSTMENT_ACCOUNT_CODE)
-                .orElseThrow(() -> new InvalidAccountException(
-                        "Cuenta de ajuste " + ADJUSTMENT_ACCOUNT_CODE + " no existe"));
-
-        MovementType movementType = diff.signum() < 0 ? MovementType.DEBITO : MovementType.CREDITO;
-        BigDecimal amount = diff.abs();
-
-        adjustmentAccount.applyMovement(movementType, amount);
-        accountRepository.save(adjustmentAccount);
-
-        JournalEntry entry = new JournalEntry();
-        entry.setEntryUuid(UUID.randomUUID().toString());
-        entry.setDescription("Ajuste automatico de cuadre EOD");
-        entry.setEntryDate(LocalDateTime.now());
-        entry.setStatus(EntryStatus.REGISTRADO);
-
-        JournalEntryLine line = new JournalEntryLine();
-        line.setAccount(adjustmentAccount);
-        line.setMovementType(movementType);
-        line.setAmount(amount);
-        line.setReference("AUTO-BALANCE");
-        entry.addLine(line);
-
-        journalEntryRepository.save(entry);
-
-        return trialBalance(date);
-    }
-
     @Transactional(readOnly = true)
     public TrialBalanceResponse structuralTrialBalance(LocalDate date) {
         LocalDate contableDate = date != null ? date : parameterService.getActiveContableDate();
@@ -154,9 +124,7 @@ public class AccountingService {
                 .filter(a -> a.getParentAccountCode() == null || a.getParentAccountCode().isBlank())
                 .map(a -> {
                     BigDecimal balance = balanceByClass.getOrDefault(a.getAccountClass(), BigDecimal.ZERO);
-                    BigDecimal debit = balance.signum() >= 0 ? balance : BigDecimal.ZERO;
-                    BigDecimal credit = balance.signum() < 0 ? balance.negate() : BigDecimal.ZERO;
-                    return new TrialBalanceAccountDto(a.getAccountCode(), a.getName(), debit, credit);
+                    return toTrialBalanceRow(a.getAccountCode(), a.getName(), a.getAccountClass(), balance);
                 })
                 .toList();
 
@@ -172,10 +140,16 @@ public class AccountingService {
     }
 
     private TrialBalanceAccountDto toTrialBalanceRow(AccountingAccount account) {
-        BigDecimal balance = account.getCurrentBalance();
-        BigDecimal debit = balance.signum() >= 0 ? balance : BigDecimal.ZERO;
-        BigDecimal credit = balance.signum() < 0 ? balance.negate() : BigDecimal.ZERO;
-        return new TrialBalanceAccountDto(account.getAccountCode(), account.getName(), debit, credit);
+        return toTrialBalanceRow(account.getAccountCode(), account.getName(),
+                account.getAccountClass(), account.getCurrentBalance());
+    }
+
+    private TrialBalanceAccountDto toTrialBalanceRow(String code, String name,
+                                                     String accountClass, BigDecimal balance) {
+        boolean esDeudora = AccountNature.fromClass(accountClass) == AccountNature.DEUDORA;
+        BigDecimal debit = esDeudora ? balance : BigDecimal.ZERO;
+        BigDecimal credit = esDeudora ? BigDecimal.ZERO : balance;
+        return new TrialBalanceAccountDto(code, name, debit, credit);
     }
 
     private AccountingAccount resolveDetailAccount(String code) {
@@ -221,6 +195,87 @@ public class AccountingService {
             throw new UnbalancedEntryException(
                     "El asiento no cuadra: debitos=" + debits + " creditos=" + credits + " (deben ser iguales).");
         }
+    }
+
+    @Transactional
+    public JournalEntryDetailDto reverseEntry(String entryUuid) {
+        JournalEntry original = findEntryOrThrow(entryUuid);
+
+        if (original.getStatus() == EntryStatus.ANULADO) {
+            throw new EntryAlreadyReversedException("El asiento " + entryUuid + " ya fue reversado.");
+        }
+        if (journalEntryRepository.findByReversalOfEntry_Id(original.getId()).isPresent()) {
+            throw new EntryAlreadyReversedException("El asiento " + entryUuid + " ya tiene un reverso registrado.");
+        }
+
+        JournalEntry reversal = new JournalEntry();
+        reversal.setEntryUuid(UUID.randomUUID().toString());
+        reversal.setDescription("Reverso de: " + original.getDescription());
+        reversal.setEntryDate(LocalDateTime.now());
+        reversal.setStatus(EntryStatus.REGISTRADO);
+        reversal.setReversalOfEntry(original);
+
+        for (JournalEntryLine originalLine : original.getLines()) {
+            MovementType invertedType = originalLine.getMovementType().opposite();
+            AccountingAccount account = resolveDetailAccount(originalLine.getAccount().getAccountCode());
+            account.applyMovement(invertedType, originalLine.getAmount());
+
+            JournalEntryLine reversalLine = new JournalEntryLine();
+            reversalLine.setAccount(account);
+            reversalLine.setMovementType(invertedType);
+            reversalLine.setAmount(originalLine.getAmount());
+            reversalLine.setReference(originalLine.getReference());
+            reversal.addLine(reversalLine);
+        }
+
+        original.setStatus(EntryStatus.ANULADO);
+        journalEntryRepository.save(original);
+        JournalEntry saved = journalEntryRepository.save(reversal);
+
+        return JournalEntryMapper.toDetailDto(saved, null);
+    }
+
+    @Transactional(readOnly = true)
+    public JournalEntryDetailDto getEntryDetail(String entryUuid) {
+        return toDetailDtoWithReversal(findEntryOrThrow(entryUuid));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<JournalEntryDetailDto> listEntries(LocalDate from, LocalDate to, String status,
+                                                    String accountCode, Pageable pageable) {
+        Specification<JournalEntry> spec = buildEntrySpecification(from, to, status, accountCode);
+        return journalEntryRepository.findAll(spec, pageable).map(this::toDetailDtoWithReversal);
+    }
+
+    private JournalEntry findEntryOrThrow(String entryUuid) {
+        return journalEntryRepository.findByEntryUuid(entryUuid)
+                .orElseThrow(() -> new EntryNotFoundException("El asiento " + entryUuid + " no existe."));
+    }
+
+    private JournalEntryDetailDto toDetailDtoWithReversal(JournalEntry entry) {
+        JournalEntry reversedBy = journalEntryRepository.findByReversalOfEntry_Id(entry.getId()).orElse(null);
+        return JournalEntryMapper.toDetailDto(entry, reversedBy);
+    }
+
+    private Specification<JournalEntry> buildEntrySpecification(LocalDate from, LocalDate to, String status,
+                                                                 String accountCode) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (from != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("entryDate"), from.atStartOfDay()));
+            }
+            if (to != null) {
+                predicates.add(cb.lessThan(root.get("entryDate"), to.plusDays(1).atStartOfDay()));
+            }
+            if (status != null && !status.isBlank()) {
+                predicates.add(cb.equal(root.get("status"), EntryStatus.valueOf(status)));
+            }
+            if (accountCode != null && !accountCode.isBlank()) {
+                query.distinct(true);
+                predicates.add(cb.equal(root.join("lines").get("account").get("accountCode"), accountCode));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
 }
