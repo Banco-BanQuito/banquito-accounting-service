@@ -31,6 +31,10 @@ public class JournalEntry {
     @Column(nullable = false, length = 15)
     private EntryStatus status;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reversal_of_entry_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    private JournalEntry reversalOfEntry;
+
     @OneToMany(mappedBy = "journalEntry", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<JournalEntryLine> lines = new ArrayList<>();
 

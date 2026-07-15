@@ -85,11 +85,6 @@ public class PlanDeCuentasInitializer implements CommandLineRunner {
         String parent       = f[4].strip();
         BigDecimal opening  = new BigDecimal(f[5].strip());
 
-        // Ya NO hace falta negar el saldo de PASIVO/INGRESO. Antes se guardaba el saldo con
-        // signo (positivo o negativo) para distinguir deudoras de acreedoras; eso era un
-        // parche. Ahora la naturaleza (DEUDORA/ACREEDORA) se deduce de la clase contable, y
-        // el saldo siempre se guarda POSITIVO en el lado normal de la cuenta. Por eso el
-        // saldo de apertura se guarda tal cual viene en el CSV, sin tocar el signo.
         AccountingAccount account = new AccountingAccount();
         account.setAccountCode(code);
         account.setName(name);

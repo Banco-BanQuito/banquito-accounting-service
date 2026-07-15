@@ -17,27 +17,11 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * EL TRADUCTOR ENTRE EL NEGOCIO Y LA CONTABILIDAD.
- *
- * <p>El resto del banco (el módulo de transferencias, el de depósitos, etc.) no sabe de
- * contabilidad. Solo avisa cosas como: "se hizo una transferencia de $100 con $2 de
- * comisión". Esta clase es la traductora: toma ese aviso en lenguaje de negocio y lo
- * convierte en el movimiento contable correcto.</p>
- *
- * <p>¿Cómo lo hace? Tiene un "recetario" de reglas. Para cada tipo de operación existe
- * una receta que dice a qué cuentas afecta y cómo. Esta clase busca la receta adecuada,
- * calcula los montos (el monto principal, la comisión y el IVA de la comisión) y arma el
- * movimiento. El anotarlo en el libro se lo deja al {@link AccountingService}.</p>
- */
 @Service
 public class AccountingRulesService {
 
-    /** El "recetario": guarda las reglas de qué cuentas usar para cada tipo de operación. */
     private final AccountingRuleRepository ruleRepository;
-    /** El libro contable, a quien le pedimos que anote el movimiento ya armado. */
     private final AccountingService accountingService;
-    /** Nos da la fecha contable de hoy y el porcentaje de IVA vigente. */
     private final ParameterService parameterService;
 
     public AccountingRulesService(AccountingRuleRepository ruleRepository,
@@ -48,23 +32,6 @@ public class AccountingRulesService {
         this.parameterService = parameterService;
     }
 
-    /**
-     * CONTABILIZAR UNA OPERACIÓN DEL BANCO (el método principal).
-     *
-     * <p>Sigue estos pasos, como una receta de cocina:</p>
-     * <ol>
-     *   <li>Revisa que el aviso venga completo.</li>
-     *   <li>Averigua sobre qué día contable se registra.</li>
-     *   <li>Identifica de qué operación se trata exactamente (según los productos que
-     *       intervienen, ej. transferencia entre ahorros y corriente).</li>
-     *   <li>Busca en el recetario la regla que aplica.</li>
-     *   <li>Calcula los montos: el principal, la comisión y el IVA de la comisión.</li>
-     *   <li>Arma el movimiento y le pide al libro contable que lo anote.</li>
-     * </ol>
-     *
-     * <p>Al final devuelve un resumen: el identificador del movimiento anotado y los
-     * montos calculados (comisión, IVA y el total cobrado al cliente).</p>
-     */
     @Transactional
     public PostOperationResponse postOperation(OperationRequest request) {
         validateRequest(request);
@@ -119,12 +86,6 @@ public class AccountingRulesService {
                 principal.add(commission).add(ivaAmount));
     }
 
-    /**
-     * Toma un paso de la receta y lo convierte en una línea real del movimiento. Según lo
-     * que diga la receta, usa el monto principal, el de la comisión o el del IVA. Si a esa
-     * línea le toca $0 y la receta indica que en ese caso se puede saltar, la omite (para
-     * no ensuciar el movimiento con líneas en cero).
-     */
     private Optional<JournalEntryLineRequest> toLineRequest(AccountingRuleLine line,
             BigDecimal principal, BigDecimal commission, BigDecimal ivaAmount, String reference) {
         BigDecimal amount = switch (line.getAmountComponent()) {
@@ -142,11 +103,6 @@ public class AccountingRulesService {
                 (reference == null || reference.isBlank()) ? null : reference));
     }
 
-    /**
-     * Revisa que el aviso de la operación traiga lo mínimo indispensable antes de
-     * procesarlo: un código único, el tipo de operación y un monto que además sea un
-     * número válido (no texto ni algo vacío).
-     */
     private void validateRequest(OperationRequest request) {
         if (request.operationUuid() == null || request.operationUuid().isBlank()) {
             throw new AccountingValidationException("operationUuid es obligatorio.");
@@ -164,13 +120,6 @@ public class AccountingRulesService {
         }
     }
 
-    /**
-     * Arma el "nombre exacto" de la operación para saber qué receta buscar. No es lo mismo
-     * una transferencia genérica que una transferencia de una cuenta de ahorros a una
-     * corriente: pueden llevar cuentas distintas. Por eso combina el tipo de operación con
-     * los productos de origen y destino, dando nombres como {@code TRANSFERENCIA},
-     * {@code TRANSFERENCIA_AHORROS} o {@code TRANSFERENCIA_AHORROS_TO_CORRIENTE}.
-     */
     private String buildEffectiveType(OperationRequest request) {
         String src = request.sourceAccountProductType();
         String dst = request.destinationAccountProductType();
@@ -185,7 +134,6 @@ public class AccountingRulesService {
         return request.operationType() + "_" + src + "_TO_" + dst;
     }
 
-    /** Interpreta la fecha que llega como texto (formato año-mes-día). Si viene mal escrita, la rechaza. */
     private LocalDate parseAccountingDate(String raw) {
         try {
             return LocalDate.parse(raw);

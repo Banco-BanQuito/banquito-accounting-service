@@ -24,32 +24,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * LA "IMPRENTA" DE REPORTES.
- *
- * <p>Toma el reporte del balance y lo convierte en un archivo que la persona puede
- * descargar, en dos presentaciones:</p>
- * <ul>
- *   <li><b>CSV:</b> un archivo tipo Excel, para quien quiera manipular los números.</li>
- *   <li><b>PDF:</b> un documento con la imagen corporativa de BanQuito (logo, tabla
- *       ordenada, colores, y un sello que dice si cuadra o no), listo para presentar.</li>
- * </ul>
- *
- * <p>Diferencia con el cierre de día: allá el archivo se guarda en el computador; aquí,
- * en cambio, el reporte se entrega al instante para descargarlo desde el sistema.</p>
- */
 @Service
 public class ReportService {
 
-    /** Marca invisible al inicio del archivo para que Excel muestre bien las tildes y la ñ. */
     private static final String BOM = new String(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF}, StandardCharsets.UTF_8);
-    /** Formato de la fecha y hora que aparece al pie del PDF ("generado el..."). */
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
-    /**
-     * Arma el reporte en formato Excel (CSV): una fila por cuenta y una fila final con los
-     * totales. Devuelve el archivo listo para descargar.
-     */
     public byte[] generateCsvBytes(TrialBalanceResponse balance) {
         List<String> rows = new ArrayList<>();
         rows.add("Código de Cuenta,Nombre de Cuenta,Saldo Deudor,Saldo Acreedor");
@@ -69,12 +49,6 @@ public class ReportService {
         return content.getBytes(StandardCharsets.UTF_8);
     }
 
-    /**
-     * Arma el reporte en formato PDF, bonito y presentable, con la imagen de BanQuito:
-     * el nombre del banco, la fecha, la hora en que se generó, un sello que dice si
-     * "CUADRADO" o "DESCUADRADO", y una tabla con las cuentas. La fila de totales se pinta
-     * de verde si todo cuadra o de rojo si no. Devuelve el documento listo para descargar.
-     */
     public byte[] generatePdfBytes(TrialBalanceResponse balance) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4);
@@ -169,7 +143,6 @@ public class ReportService {
         return out.toByteArray();
     }
 
-    /** Ayudante que crea y pega una celda en la tabla del PDF con su color de fondo, borde y alineación. */
     private void addCell(PdfPTable table, String text, Font font, Color bg, Color border, int align) {
         PdfPCell cell = new PdfPCell(new Phrase(text, font));
         cell.setBackgroundColor(bg);
@@ -179,7 +152,6 @@ public class ReportService {
         table.addCell(cell);
     }
 
-    /** Da formato a los montos con separador de miles y dos decimales, ej. 1.234,50, para que se lean fácil. */
     private String fmt(BigDecimal value) {
         return String.format("%,.2f", value);
     }

@@ -10,4 +10,8 @@ public enum MovementType {
     MovementType(String value) {
         this.value = value;
     }
+
+    public MovementType opposite() {
+        return this == DEBITO ? CREDITO : DEBITO;
+    }
 }
