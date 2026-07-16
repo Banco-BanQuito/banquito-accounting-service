@@ -11,6 +11,9 @@ service AccountingService {
   rpc RegisterEntry(AccountingEntryRequest) returns (AccountingEntryResponse);
   // Preferred: Accounting resuelve las cuentas internamente según reglas parametrizadas.
   rpc PostOperation(AccountingOperationRequest) returns (AccountingEntryResponse);
+  // RF-01: compensacion explicita — el Core invoca esto para deshacer un asiento
+  // ya registrado cuando el propio Core falla despues de llamar a PostOperation.
+  rpc ReverseOperation(ReverseOperationRequest) returns (AccountingEntryResponse);
 }
 
 message AccountingEntryRequest {
@@ -48,4 +51,8 @@ message AccountingEntryResponse {
   string commission_amount = 6;
   string iva_amount = 7;
   string total_debited = 8;
+}
+
+message ReverseOperationRequest {
+  string entry_uuid = 1;
 }
