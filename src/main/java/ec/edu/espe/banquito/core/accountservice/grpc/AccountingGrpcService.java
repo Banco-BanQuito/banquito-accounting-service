@@ -1,5 +1,6 @@
 package ec.edu.espe.banquito.core.accountservice.grpc;
 
+import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryDetailDto;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryLineRequest;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryRequest;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryResponse;
@@ -10,6 +11,7 @@ import ec.edu.espe.banquito.core.accountservice.grpc.proto.AccountingEntryRespon
 import ec.edu.espe.banquito.core.accountservice.grpc.proto.AccountingOperationRequest;
 import ec.edu.espe.banquito.core.accountservice.grpc.proto.AccountingServiceGrpc;
 import ec.edu.espe.banquito.core.accountservice.grpc.proto.JournalLine;
+import ec.edu.espe.banquito.core.accountservice.grpc.proto.ReverseOperationRequest;
 import ec.edu.espe.banquito.core.accountservice.exception.AccountingException;
 import ec.edu.espe.banquito.core.accountservice.exception.AccountingValidationException;
 import ec.edu.espe.banquito.core.accountservice.service.AccountingRulesService;
@@ -74,6 +76,20 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
         }
     }
 
+    @Override
+    public void reverseOperation(ReverseOperationRequest request,
+                                  StreamObserver<AccountingEntryResponse> responseObserver) {
+        try {
+            JournalEntryDetailDto result = accountingService.reverseEntry(request.getEntryUuid());
+            responseObserver.onNext(toResponse(result));
+            responseObserver.onCompleted();
+        } catch (AccountingException e) {
+            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
+        } catch (Exception e) {
+            responseObserver.onError(Status.INTERNAL.withDescription(e.getMessage()).asRuntimeException());
+        }
+    }
+
     private JournalEntryRequest toEntryDto(AccountingEntryRequest request) {
         LocalDate entryDate = request.getEntryDate().isBlank() ? null : LocalDate.parse(request.getEntryDate());
         List<JournalEntryLineRequest> lines = request.getLinesList().stream().map(this::toLineDto).toList();
@@ -101,6 +117,15 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
                 .setStatus(result.status())
                 .setValidationResult(result.validationResult())
                 .setRegisteredAt(result.registeredAt().toString())
+                .build();
+    }
+
+    private AccountingEntryResponse toResponse(JournalEntryDetailDto result) {
+        return AccountingEntryResponse.newBuilder()
+                .setEntryId(result.entryId())
+                .setEntryUuid(result.entryUuid())
+                .setStatus(result.status())
+                .setRegisteredAt(result.entryDate().toString())
                 .build();
     }
 
