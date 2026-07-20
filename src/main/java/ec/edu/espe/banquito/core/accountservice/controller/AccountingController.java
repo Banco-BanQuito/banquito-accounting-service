@@ -92,15 +92,6 @@ public class AccountingController {
         return ResponseEntity.ok(accountingService.getEntryDetail(entryUuid));
     }
 
-    @PostMapping("/entries/{entryUuid}/reverse")
-    @Operation(summary = "Revertir un asiento contable", description = "Genera el asiento de reverso (movimientos invertidos) y marca el original como ANULADO.")
-    @ApiResponse(responseCode = "200", description = "Reverso generado")
-    @ApiResponse(responseCode = "404", description = "El asiento no existe")
-    @ApiResponse(responseCode = "409", description = "El asiento ya fue reversado")
-    public ResponseEntity<JournalEntryDetailDto> reverseEntry(@PathVariable String entryUuid) {
-        return ResponseEntity.ok(accountingService.reverseEntry(entryUuid));
-    }
-
     @GetMapping("/trial-balance")
     @Operation(summary = "Balance de Comprobación", description = "Devuelve los saldos deudores y acreedores por cuenta para la fecha indicada (o la fecha contable activa).")
     @ApiResponse(responseCode = "200", description = "Balance devuelto")
