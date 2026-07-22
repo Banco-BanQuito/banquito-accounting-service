@@ -24,10 +24,10 @@ public class JournalEntry {
     @Column(nullable = false, length = 255)
     private String description;
 
-    @Column(name = "source_account_number", length = 80)
+    @Column(name = "source_account_number", length = 20)
     private String sourceAccountNumber;
 
-    @Column(name = "destination_account_number", length = 80)
+    @Column(name = "destination_account_number", length = 20)
     private String destinationAccountNumber;
 
     @Column(name = "beneficiary_name", length = 150)
