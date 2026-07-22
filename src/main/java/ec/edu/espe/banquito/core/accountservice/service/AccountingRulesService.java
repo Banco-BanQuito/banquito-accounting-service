@@ -73,6 +73,9 @@ public class AccountingRulesService {
                 request.operationUuid(),
                 effectiveType + " | " + request.reference(),
                 contableDate,
+                request.sourceAccountNumber(),
+                request.destinationAccountNumber(),
+                request.beneficiaryName(),
                 lines));
 
         return new PostOperationResponse(

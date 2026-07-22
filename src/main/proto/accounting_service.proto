@@ -40,6 +40,9 @@ message AccountingOperationRequest {
   string accounting_date = 7;
   string destination_account_product_type = 8;
   string iva_amount = 9;
+  string source_account_number = 10;
+  string destination_account_number = 11;
+  string beneficiary_name = 12;
 }
 
 message AccountingEntryResponse {

@@ -64,7 +64,10 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
                     request.getCommissionAmount(),
                     request.getReference(),
                     request.getAccountingDate(),
-                    request.getIvaAmount());
+                    request.getIvaAmount(),
+                    blankToNull(request.getSourceAccountNumber()),
+                    blankToNull(request.getDestinationAccountNumber()),
+                    blankToNull(request.getBeneficiaryName()));
 
             PostOperationResponse result = accountingRulesService.postOperation(dto);
             responseObserver.onNext(toResponse(result));
@@ -140,5 +143,9 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
                 .setIvaAmount(result.ivaAmount().toPlainString())
                 .setTotalDebited(result.totalDebited().toPlainString())
                 .build();
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 }

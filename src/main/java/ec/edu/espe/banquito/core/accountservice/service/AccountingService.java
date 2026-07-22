@@ -69,6 +69,9 @@ public class AccountingService {
         JournalEntry entry = new JournalEntry();
         entry.setEntryUuid(request.entryUuid());
         entry.setDescription(request.description());
+        entry.setSourceAccountNumber(blankToNull(request.sourceAccountNumber()));
+        entry.setDestinationAccountNumber(blankToNull(request.destinationAccountNumber()));
+        entry.setBeneficiaryName(blankToNull(request.beneficiaryName()));
         entry.setEntryDate(entryDate);
         entry.setStatus(EntryStatus.REGISTRADO);
 
@@ -276,6 +279,10 @@ public class AccountingService {
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
 }
