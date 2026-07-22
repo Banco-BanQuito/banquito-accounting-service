@@ -10,6 +10,8 @@ public record JournalEntryDetailDto(
         String description,
         LocalDateTime entryDate,
         String status,
+        String debitAccount,
+        String creditAccount,
         List<JournalEntryLineDto> lines,
         BigDecimal totalDebit,
         BigDecimal totalCredit,

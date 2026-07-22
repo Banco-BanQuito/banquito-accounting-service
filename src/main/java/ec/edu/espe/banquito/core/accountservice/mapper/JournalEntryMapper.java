@@ -42,6 +42,8 @@ public class JournalEntryMapper {
                 entry.getDescription(),
                 entry.getEntryDate(),
                 entry.getStatus().name(),
+                mainAccountLabel(entry.getLines(), MovementType.DEBITO),
+                mainAccountLabel(entry.getLines(), MovementType.CREDITO),
                 lines,
                 totalDebit,
                 totalCredit,
@@ -55,5 +57,13 @@ public class JournalEntryMapper {
                 .filter(line -> line.getMovementType() == type)
                 .map(JournalEntryLine::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private static String mainAccountLabel(List<JournalEntryLine> lines, MovementType type) {
+        return lines.stream()
+                .filter(line -> line.getMovementType() == type)
+                .max((a, b) -> a.getAmount().compareTo(b.getAmount()))
+                .map(line -> line.getAccount().getAccountCode() + " - " + line.getAccount().getName())
+                .orElse(null);
     }
 }
