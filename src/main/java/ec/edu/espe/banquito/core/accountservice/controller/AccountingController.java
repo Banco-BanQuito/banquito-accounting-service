@@ -1,5 +1,6 @@
 package ec.edu.espe.banquito.core.accountservice.controller;
 
+import ec.edu.espe.banquito.core.accountservice.dto.ActiveContableDateResponse;
 import ec.edu.espe.banquito.core.accountservice.dto.EodRequest;
 import ec.edu.espe.banquito.core.accountservice.dto.EodResponse;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryDetailDto;
@@ -90,6 +91,13 @@ public class AccountingController {
     @ApiResponse(responseCode = "404", description = "El asiento no existe")
     public ResponseEntity<JournalEntryDetailDto> getEntry(@PathVariable String entryUuid) {
         return ResponseEntity.ok(accountingService.getEntryDetail(entryUuid));
+    }
+
+    @GetMapping("/contable-date")
+    @Operation(summary = "Fecha contable activa", description = "Devuelve la fecha contable vigente del sistema (avanza solo con el cierre End-of-Day).")
+    @ApiResponse(responseCode = "200", description = "Fecha contable devuelta")
+    public ResponseEntity<ActiveContableDateResponse> activeContableDate() {
+        return ResponseEntity.ok(new ActiveContableDateResponse(accountingService.getActiveContableDate()));
     }
 
     @GetMapping("/trial-balance")
