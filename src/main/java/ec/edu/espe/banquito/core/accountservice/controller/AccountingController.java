@@ -1,5 +1,6 @@
 package ec.edu.espe.banquito.core.accountservice.controller;
 
+import ec.edu.espe.banquito.core.accountservice.dto.ActiveContableDateResponse;
 import ec.edu.espe.banquito.core.accountservice.dto.EodRequest;
 import ec.edu.espe.banquito.core.accountservice.dto.EodResponse;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryDetailDto;
@@ -92,13 +93,11 @@ public class AccountingController {
         return ResponseEntity.ok(accountingService.getEntryDetail(entryUuid));
     }
 
-    @PostMapping("/entries/{entryUuid}/reverse")
-    @Operation(summary = "Revertir un asiento contable", description = "Genera el asiento de reverso (movimientos invertidos) y marca el original como ANULADO.")
-    @ApiResponse(responseCode = "200", description = "Reverso generado")
-    @ApiResponse(responseCode = "404", description = "El asiento no existe")
-    @ApiResponse(responseCode = "409", description = "El asiento ya fue reversado")
-    public ResponseEntity<JournalEntryDetailDto> reverseEntry(@PathVariable String entryUuid) {
-        return ResponseEntity.ok(accountingService.reverseEntry(entryUuid));
+    @GetMapping("/contable-date")
+    @Operation(summary = "Fecha contable activa", description = "Devuelve la fecha contable vigente del sistema (avanza solo con el cierre End-of-Day).")
+    @ApiResponse(responseCode = "200", description = "Fecha contable devuelta")
+    public ResponseEntity<ActiveContableDateResponse> activeContableDate() {
+        return ResponseEntity.ok(new ActiveContableDateResponse(accountingService.getActiveContableDate()));
     }
 
     @GetMapping("/trial-balance")

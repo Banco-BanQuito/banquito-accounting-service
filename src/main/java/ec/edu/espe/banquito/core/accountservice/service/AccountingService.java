@@ -92,6 +92,11 @@ public class AccountingService {
     }
 
     @Transactional(readOnly = true)
+    public LocalDate getActiveContableDate() {
+        return parameterService.getActiveContableDate();
+    }
+
+    @Transactional(readOnly = true)
     public TrialBalanceResponse trialBalance(LocalDate date) {
         LocalDate contableDate = date != null ? date : parameterService.getActiveContableDate();
 

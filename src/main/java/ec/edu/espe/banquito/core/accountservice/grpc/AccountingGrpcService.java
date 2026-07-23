@@ -14,6 +14,9 @@ import ec.edu.espe.banquito.core.accountservice.grpc.proto.JournalLine;
 import ec.edu.espe.banquito.core.accountservice.grpc.proto.ReverseOperationRequest;
 import ec.edu.espe.banquito.core.accountservice.exception.AccountingException;
 import ec.edu.espe.banquito.core.accountservice.exception.AccountingValidationException;
+import ec.edu.espe.banquito.core.accountservice.exception.EntryAlreadyReversedException;
+import ec.edu.espe.banquito.core.accountservice.exception.EntryNotFoundException;
+import ec.edu.espe.banquito.core.accountservice.exception.UnbalancedEntryException;
 import ec.edu.espe.banquito.core.accountservice.service.AccountingRulesService;
 import ec.edu.espe.banquito.core.accountservice.service.AccountingService;
 import io.grpc.Status;
@@ -21,9 +24,11 @@ import io.grpc.stub.StreamObserver;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 @Profile("!test")
 public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServiceImplBase {
@@ -45,7 +50,7 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
             responseObserver.onNext(toResponse(result));
             responseObserver.onCompleted();
         } catch (AccountingException e) {
-            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
+            responseObserver.onError(toGrpcError(e));
         } catch (Exception e) {
             responseObserver.onError(Status.INTERNAL.withDescription(e.getMessage()).asRuntimeException());
         }
@@ -73,7 +78,7 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
             responseObserver.onNext(toResponse(result));
             responseObserver.onCompleted();
         } catch (AccountingException e) {
-            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
+            responseObserver.onError(toGrpcError(e));
         } catch (Exception e) {
             responseObserver.onError(Status.INTERNAL.withDescription(e.getMessage()).asRuntimeException());
         }
@@ -82,15 +87,37 @@ public class AccountingGrpcService extends AccountingServiceGrpc.AccountingServi
     @Override
     public void reverseOperation(ReverseOperationRequest request,
                                   StreamObserver<AccountingEntryResponse> responseObserver) {
+        String entryUuid = request.getEntryUuid();
+        log.info("[RF-01][REVERSO] Solicitud de reverso recibida para asiento {}", entryUuid);
         try {
-            JournalEntryDetailDto result = accountingService.reverseEntry(request.getEntryUuid());
+            JournalEntryDetailDto result = accountingService.reverseEntry(entryUuid);
+            log.info("[RF-01][REVERSO] Asiento {} reversado correctamente (nuevo asiento {})",
+                    entryUuid, result.entryUuid());
             responseObserver.onNext(toResponse(result));
             responseObserver.onCompleted();
         } catch (AccountingException e) {
-            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
+            log.warn("[RF-01][REVERSO-RECHAZADO] No se pudo reversar el asiento {}: {}", entryUuid, e.getMessage());
+            responseObserver.onError(toGrpcError(e));
         } catch (Exception e) {
+            log.error("[RF-01][REVERSO-FALLIDO] Error inesperado al reversar el asiento {}: {}",
+                    entryUuid, e.getMessage(), e);
             responseObserver.onError(Status.INTERNAL.withDescription(e.getMessage()).asRuntimeException());
         }
+    }
+
+    /**
+     * Traduce cada excepción de dominio a su código gRPC semántico, en vez de
+     * colapsar todo en INVALID_ARGUMENT — replica el mismo mapeo que ya usa
+     * GlobalExceptionHandler para la API REST (NOT_FOUND / CONFLICT / INVALID_ARGUMENT).
+     */
+    private io.grpc.StatusRuntimeException toGrpcError(AccountingException e) {
+        Status status = switch (e) {
+            case EntryNotFoundException ex -> Status.NOT_FOUND;
+            case EntryAlreadyReversedException ex -> Status.FAILED_PRECONDITION;
+            case UnbalancedEntryException ex -> Status.FAILED_PRECONDITION;
+            default -> Status.INVALID_ARGUMENT;
+        };
+        return status.withDescription(e.getMessage()).asRuntimeException();
     }
 
     private JournalEntryRequest toEntryDto(AccountingEntryRequest request) {
