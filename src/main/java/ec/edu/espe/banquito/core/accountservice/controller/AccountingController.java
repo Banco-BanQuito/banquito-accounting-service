@@ -1,6 +1,7 @@
 package ec.edu.espe.banquito.core.accountservice.controller;
 
 import ec.edu.espe.banquito.core.accountservice.dto.ActiveContableDateResponse;
+import ec.edu.espe.banquito.core.accountservice.dto.CorrespondentBankPositionDto;
 import ec.edu.espe.banquito.core.accountservice.dto.EodRequest;
 import ec.edu.espe.banquito.core.accountservice.dto.EodResponse;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryDetailDto;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -108,6 +110,16 @@ public class AccountingController {
             @RequestParam(value = "date", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(accountingService.trialBalance(date));
+    }
+
+    @GetMapping("/reports/correspondent-position")
+    @Operation(summary = "Posición por banco corresponsal", description = "Devuelve la posición neta (Nostro − Vostro) por cada banco corresponsal del catálogo, para consulta intra-día o de encabezado del EOD. Reporte de solo lectura/riesgo de contraparte; no participa en el cuadre balanced() del Balance de Comprobación.")
+    @ApiResponse(responseCode = "200", description = "Posición por banco corresponsal devuelta")
+    public ResponseEntity<List<CorrespondentBankPositionDto>> correspondentBankPosition(
+            @Parameter(description = "Fecha de referencia del reporte (YYYY-MM-DD). Informativa: currentBalance es un saldo corriente siempre vigente, no se reconstruye histórico. Default: fecha contable activa.", example = "2026-08-02")
+            @RequestParam(value = "date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(accountingService.positionByCorrespondentBank(date));
     }
 
     @GetMapping("/reports/csv")

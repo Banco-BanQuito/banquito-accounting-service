@@ -23,13 +23,16 @@ public class AccountingRulesService {
     private final AccountingRuleRepository ruleRepository;
     private final AccountingService accountingService;
     private final ParameterService parameterService;
+    private final CorrespondentBankResolver correspondentBankResolver;
 
     public AccountingRulesService(AccountingRuleRepository ruleRepository,
                                   AccountingService accountingService,
-                                  ParameterService parameterService) {
+                                  ParameterService parameterService,
+                                  CorrespondentBankResolver correspondentBankResolver) {
         this.ruleRepository = ruleRepository;
         this.accountingService = accountingService;
         this.parameterService = parameterService;
+        this.correspondentBankResolver = correspondentBankResolver;
     }
 
     @Transactional
@@ -59,7 +62,8 @@ public class AccountingRulesService {
         }
 
         List<JournalEntryLineRequest> lines = rule.getLines().stream()
-                .map(l -> toLineRequest(l, principal, commission, ivaAmount, request.reference()))
+                .map(l -> toLineRequest(l, principal, commission, ivaAmount, request.reference(),
+                        request.counterpartyBankCode()))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();
@@ -87,7 +91,8 @@ public class AccountingRulesService {
     }
 
     private Optional<JournalEntryLineRequest> toLineRequest(AccountingRuleLine line,
-            BigDecimal principal, BigDecimal commission, BigDecimal ivaAmount, String reference) {
+            BigDecimal principal, BigDecimal commission, BigDecimal ivaAmount, String reference,
+            String counterpartyBankCode) {
         BigDecimal amount = switch (line.getAmountComponent()) {
             case PRINCIPAL -> principal;
             case COMMISSION -> commission;
@@ -96,8 +101,13 @@ public class AccountingRulesService {
         if (line.isSkipIfZero() && amount.compareTo(BigDecimal.ZERO) == 0) {
             return Optional.empty();
         }
+        String resolvedAccountCode = switch (line.getAccountCode()) {
+            case "NOSTRO_DYNAMIC" -> correspondentBankResolver.resolveNostroAccount(counterpartyBankCode);
+            case "VOSTRO_DYNAMIC" -> correspondentBankResolver.resolveVostroAccount(counterpartyBankCode);
+            default -> line.getAccountCode();
+        };
         return Optional.of(new JournalEntryLineRequest(
-                line.getAccountCode(),
+                resolvedAccountCode,
                 line.getMovementType().name(),
                 amount,
                 (reference == null || reference.isBlank()) ? null : reference));

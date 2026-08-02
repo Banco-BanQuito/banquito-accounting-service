@@ -19,8 +19,8 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    @ExceptionHandler(EntryNotFoundException.class)
-    public ProblemDetail handleNotFound(EntryNotFoundException ex) {
+    @ExceptionHandler({EntryNotFoundException.class, CorrespondentBankNotFoundException.class})
+    public ProblemDetail handleNotFound(AccountingException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 

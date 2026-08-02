@@ -1,5 +1,6 @@
 package ec.edu.espe.banquito.core.accountservice.service;
 
+import ec.edu.espe.banquito.core.accountservice.dto.CorrespondentBankPositionDto;
 import ec.edu.espe.banquito.core.accountservice.dto.EodRequest;
 import ec.edu.espe.banquito.core.accountservice.dto.EodResponse;
 import ec.edu.espe.banquito.core.accountservice.dto.TrialBalanceAccountDto;
@@ -51,6 +52,14 @@ public class EndOfDayService {
         }
 
         String reportPath = writeTrialBalanceCsv(contableDate, balance);
+
+        // Sección/archivo separado, puramente informativo (riesgo de contraparte): no participa
+        // en balance.balanced() ni en la validación de cierre ya realizada arriba.
+        List<CorrespondentBankPositionDto> correspondentBankPositions =
+                accountingService.positionByCorrespondentBank(contableDate);
+        String correspondentBankPositionReportPath =
+                writeCorrespondentBankPositionCsv(contableDate, correspondentBankPositions);
+
         LocalDate nextContableDate = contableDate.plusDays(1);
         parameterService.setActiveContableDate(nextContableDate);
 
@@ -61,7 +70,9 @@ public class EndOfDayService {
                 balance.totalDebits(),
                 balance.totalCredits(),
                 "CUADRADO",
-                reportPath);
+                reportPath,
+                correspondentBankPositions,
+                correspondentBankPositionReportPath);
     }
 
     private String writeTrialBalanceCsv(LocalDate date, TrialBalanceResponse balance) {
@@ -87,6 +98,31 @@ public class EndOfDayService {
             return file.toAbsolutePath().toString();
         } catch (IOException e) {
             throw new UncheckedIOException("No se pudo escribir el CSV del Balance de Comprobación", e);
+        }
+    }
+
+    private String writeCorrespondentBankPositionCsv(LocalDate date,
+                                                      List<CorrespondentBankPositionDto> positions) {
+        List<String> rows = new ArrayList<>();
+        rows.add("Código de Banco,Nombre de Banco,Estado,Saldo Nostro,Saldo Vostro,Posición Neta");
+        for (CorrespondentBankPositionDto position : positions) {
+            rows.add(String.join(",",
+                    position.bankCode(),
+                    "\"" + position.bankName() + "\"",
+                    position.status(),
+                    position.nostroBalance().toPlainString(),
+                    position.vostroBalance().toPlainString(),
+                    position.netPosition().toPlainString()));
+        }
+
+        try {
+            Files.createDirectories(reportsDir);
+            Path file = reportsDir.resolve("posicion_bancos_" + date.format(FILE_DATE) + ".csv");
+            String content = BOM + String.join("\r\n", rows) + "\r\n";
+            Files.writeString(file, content, StandardCharsets.UTF_8);
+            return file.toAbsolutePath().toString();
+        } catch (IOException e) {
+            throw new UncheckedIOException("No se pudo escribir el CSV de posición por banco corresponsal", e);
         }
     }
 }

@@ -4,6 +4,7 @@ import ec.edu.espe.banquito.core.accountservice.enums.AccountNature;
 import ec.edu.espe.banquito.core.accountservice.enums.AccountType;
 import ec.edu.espe.banquito.core.accountservice.enums.EntryStatus;
 import ec.edu.espe.banquito.core.accountservice.enums.MovementType;
+import ec.edu.espe.banquito.core.accountservice.dto.CorrespondentBankPositionDto;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryDetailDto;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryLineRequest;
 import ec.edu.espe.banquito.core.accountservice.dto.JournalEntryRequest;
@@ -17,9 +18,11 @@ import ec.edu.espe.banquito.core.accountservice.exception.EntryNotFoundException
 import ec.edu.espe.banquito.core.accountservice.exception.InvalidAccountException;
 import ec.edu.espe.banquito.core.accountservice.exception.UnbalancedEntryException;
 import ec.edu.espe.banquito.core.accountservice.model.AccountingAccount;
+import ec.edu.espe.banquito.core.accountservice.model.CorrespondentBank;
 import ec.edu.espe.banquito.core.accountservice.model.JournalEntry;
 import ec.edu.espe.banquito.core.accountservice.model.JournalEntryLine;
 import ec.edu.espe.banquito.core.accountservice.repository.AccountingAccountRepository;
+import ec.edu.espe.banquito.core.accountservice.repository.CorrespondentBankRepository;
 import ec.edu.espe.banquito.core.accountservice.repository.JournalEntryRepository;
 import jakarta.persistence.criteria.Predicate;
 import java.math.BigDecimal;
@@ -42,13 +45,16 @@ public class AccountingService {
     private final AccountingAccountRepository accountRepository;
     private final JournalEntryRepository journalEntryRepository;
     private final ParameterService parameterService;
+    private final CorrespondentBankRepository correspondentBankRepository;
 
     public AccountingService(AccountingAccountRepository accountRepository,
                              JournalEntryRepository journalEntryRepository,
-                             ParameterService parameterService) {
+                             ParameterService parameterService,
+                             CorrespondentBankRepository correspondentBankRepository) {
         this.accountRepository = accountRepository;
         this.journalEntryRepository = journalEntryRepository;
         this.parameterService = parameterService;
+        this.correspondentBankRepository = correspondentBankRepository;
     }
 
     @Transactional
@@ -142,6 +148,45 @@ public class AccountingService {
 
         return new TrialBalanceResponse(contableDate, accounts, totalDebits, totalCredits,
                 totalDebits.compareTo(totalCredits) == 0);
+    }
+
+    /**
+     * Reporte EOD de posición neta por banco corresponsal (Fase 6, solo lectura/riesgo de
+     * contraparte). No participa en balanced()/structuralTrialBalance(): esas siguen siendo
+     * la única fuente de verdad para el cuadre global de partida doble.
+     *
+     * Incluye TODOS los bancos del catálogo (ACTIVO e INACTIVO): un banco desactivado con saldo
+     * Nostro/Vostro residual sigue siendo una exposición real y no debe desaparecer del reporte
+     * de riesgo solo porque se le dio de baja operativa.
+     *
+     * currentBalance en AccountingAccount es un saldo corriente siempre vigente (se actualiza in
+     * situ en cada asiento vía applyMovement()), no una suma histórica de movimientos. Por eso
+     * "date" aquí es puramente informativo/de encabezado del reporte (igual que en
+     * structuralTrialBalance(date)) — no se reconstruye un saldo histórico a una fecha pasada.
+     */
+    @Transactional(readOnly = true)
+    public List<CorrespondentBankPositionDto> positionByCorrespondentBank(LocalDate date) {
+        return correspondentBankRepository.findAllByOrderByBankCodeAsc().stream()
+                .map(this::toPositionRow)
+                .toList();
+    }
+
+    private CorrespondentBankPositionDto toPositionRow(CorrespondentBank bank) {
+        BigDecimal nostroBalance = accountRepository.findById(bank.getNostroAccountCode())
+                .map(AccountingAccount::getCurrentBalance)
+                .orElse(BigDecimal.ZERO);
+        BigDecimal vostroBalance = accountRepository.findById(bank.getVostroAccountCode())
+                .map(AccountingAccount::getCurrentBalance)
+                .orElse(BigDecimal.ZERO);
+        BigDecimal netPosition = nostroBalance.subtract(vostroBalance);
+
+        return new CorrespondentBankPositionDto(
+                bank.getBankCode(),
+                bank.getBankName(),
+                bank.getStatus().name(),
+                nostroBalance,
+                vostroBalance,
+                netPosition);
     }
 
     private TrialBalanceAccountDto toTrialBalanceRow(AccountingAccount account) {

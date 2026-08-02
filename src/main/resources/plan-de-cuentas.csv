@@ -10,20 +10,33 @@
 #                    La clase define la NATURALEZA (DEUDORA/ACREEDORA); ya NO se niega el signo.
 #
 # Las 13 cuentas reales vienen del seed de infra (05-seed-accountingdb.sql).
-# La cuenta 3.1.0.01 (Patrimonio) es solo para tests H2: hace cuadrar el Balance de arranque.
+# Las ramas estructurales Nostro/Vostro (1.1.1.00 y 2.3.0.00) vienen de
+# 13-schema-correspondent-bank.sql: son los padres de las cuentas DETALLE que
+# AccountingAccountProvisioningService genera por banco corresponsal.
+# La rama Transferencias por Liquidar (2.4.0.00 y su DETALLE 2.4.0.01) viene de
+# 15-seed-transferencias-por-liquidar.sql: cuenta puente PASIVO, única y global.
+# Las cuentas 3.0.0.00 y 3.1.0.01 (Patrimonio) son solo para tests H2 / arranque local:
+# hacen cuadrar el Balance de arranque. La raíz 3.0.0.00 es necesaria porque el Balance
+# ESTRUCTURAL solo emite filas por cuenta raíz: sin ella, el saldo PATRIMONIO no entra
+# al cuadre y el EOD no cierra.
 #
 code;name;type;class;parent;openingBalance
 1.0.0.00;ACTIVOS;ESTRUCTURAL;ACTIVO;;0
 1.1.0.00;Disponibilidades;ESTRUCTURAL;ACTIVO;1.0.0.00;0
 1.1.0.01;Banco Central / Cámara de Compensación;DETALLE;ACTIVO;1.1.0.00;500000.00
 1.1.0.02;Bóveda Central / Efectivo en Caja;DETALLE;ACTIVO;1.1.0.00;1000000.00
+1.1.1.00;Cuentas Nostro;ESTRUCTURAL;ACTIVO;1.1.0.00;0
 2.0.0.00;PASIVOS;ESTRUCTURAL;PASIVO;;0
 2.1.0.00;Obligaciones con el Público;ESTRUCTURAL;PASIVO;2.0.0.00;0
 2.1.0.01;Cuentas de Ahorros Clientes;DETALLE;PASIVO;2.1.0.00;0
 2.1.0.02;Cuentas Corrientes Clientes;DETALLE;PASIVO;2.1.0.00;0
 2.2.0.00;Retenciones e Impuestos;ESTRUCTURAL;PASIVO;2.0.0.00;0
 2.2.0.01;IVA Retenido por Servicios;DETALLE;PASIVO;2.2.0.00;0
+2.3.0.00;Cuentas Vostro;ESTRUCTURAL;PASIVO;2.0.0.00;0
+2.4.0.00;Transferencias por Liquidar;ESTRUCTURAL;PASIVO;2.0.0.00;0
+2.4.0.01;Transferencias Salientes por Liquidar;DETALLE;PASIVO;2.4.0.00;0
 4.0.0.00;INGRESOS;ESTRUCTURAL;INGRESO;;0
 4.1.0.00;Ingresos por Servicios;ESTRUCTURAL;INGRESO;4.0.0.00;0
 4.1.0.01;Comisiones por Pagos Masivos;DETALLE;INGRESO;4.1.0.00;0
-3.1.0.01;Patrimonio / Capital Inicial;DETALLE;PATRIMONIO;;1500000.00
+3.0.0.00;PATRIMONIO;ESTRUCTURAL;PATRIMONIO;;0
+3.1.0.01;Patrimonio / Capital Inicial;DETALLE;PATRIMONIO;3.0.0.00;1500000.00
