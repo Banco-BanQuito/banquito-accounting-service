@@ -174,7 +174,31 @@
 						<id>report</id>
 						<phase>test</phase>
 						<goals><goal>report</goal></goals>
-					</execution>
+					</execution>                    <execution>
+                        <id>check-controller-service-coverage</id>
+                        <phase>verify</phase>
+                        <goals><goal>check</goal></goals>
+                        <configuration>
+                            <includes>
+                                <include>**/controller/*</include>
+                                <include>**/controller/**/*</include>
+                                <include>**/service/*</include>
+                                <include>**/service/**/*</include>
+                            </includes>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.70</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
 				</executions>
 			</plugin>
 			<plugin>
