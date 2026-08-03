@@ -80,14 +80,23 @@ public class AccountingService {
                 .sorted(Comparator.comparing(JournalEntryLineRequest::accountCode))
                 .toList();
 
+        // Resuelve y aplica el movimiento a cada cuenta primero (mientras se sostiene
+        // el lock pesimista), antes de construir el resto del asiento. Minimiza el
+        // trabajo intercalado bajo el lock para reducir el tiempo de retención frente
+        // a otras transacciones concurrentes esperando la misma cuenta.
+        List<AccountingAccount> resolvedAccounts = new ArrayList<>(orderedLines.size());
         for (JournalEntryLineRequest lineReq : orderedLines) {
             MovementType movementType = MovementType.valueOf(lineReq.movementType());
             AccountingAccount account = resolveDetailAccount(lineReq.accountCode());
             account.applyMovement(movementType, lineReq.amount());
+            resolvedAccounts.add(account);
+        }
 
+        for (int i = 0; i < orderedLines.size(); i++) {
+            JournalEntryLineRequest lineReq = orderedLines.get(i);
             JournalEntryLine line = new JournalEntryLine();
-            line.setAccount(account);
-            line.setMovementType(movementType);
+            line.setAccount(resolvedAccounts.get(i));
+            line.setMovementType(MovementType.valueOf(lineReq.movementType()));
             line.setAmount(lineReq.amount());
             line.setReference(lineReq.reference());
             entry.addLine(line);
