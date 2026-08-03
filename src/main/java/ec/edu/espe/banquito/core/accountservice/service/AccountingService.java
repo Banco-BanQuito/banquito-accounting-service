@@ -29,6 +29,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -78,7 +79,11 @@ public class AccountingService {
         entry.setEntryDate(entryDate);
         entry.setStatus(EntryStatus.REGISTRADO);
 
-        for (JournalEntryLineRequest lineReq : request.lines()) {
+        List<JournalEntryLineRequest> orderedLines = request.lines().stream()
+                .sorted(Comparator.comparing(JournalEntryLineRequest::accountCode))
+                .toList();
+
+        for (JournalEntryLineRequest lineReq : orderedLines) {
             MovementType movementType = MovementType.valueOf(lineReq.movementType());
             AccountingAccount account = resolveDetailAccount(lineReq.accountCode());
             account.applyMovement(movementType, lineReq.amount());
@@ -265,7 +270,11 @@ public class AccountingService {
         reversal.setStatus(EntryStatus.REGISTRADO);
         reversal.setReversalOfEntry(original);
 
-        for (JournalEntryLine originalLine : original.getLines()) {
+        List<JournalEntryLine> orderedOriginalLines = original.getLines().stream()
+                .sorted(Comparator.comparing(l -> l.getAccount().getAccountCode()))
+                .toList();
+
+        for (JournalEntryLine originalLine : orderedOriginalLines) {
             MovementType invertedType = originalLine.getMovementType().opposite();
             AccountingAccount account = resolveDetailAccount(originalLine.getAccount().getAccountCode());
             account.applyMovement(invertedType, originalLine.getAmount());
