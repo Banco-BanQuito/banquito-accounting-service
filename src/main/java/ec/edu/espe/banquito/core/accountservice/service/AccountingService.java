@@ -111,11 +111,32 @@ public class AccountingService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Balance de comprobacion detallado a una fecha de corte. Igual que
+     * structuralTrialBalance, los saldos se calculan sumando los asientos registrados
+     * hasta el final de ese dia en vez de leer AccountingAccount.currentBalance, que
+     * refleja la posicion actual y no la de la fecha consultada.
+     *
+     * Solo se listan cuentas DETALLE: las ESTRUCTURAL son agrupadoras, nunca reciben
+     * movimiento y su currentBalance es siempre cero, asi que incluirlas solo agregaba
+     * filas vacias al reporte.
+     */
     public TrialBalanceResponse trialBalance(LocalDate date) {
         LocalDate contableDate = date != null ? date : parameterService.getActiveContableDate();
 
-        List<TrialBalanceAccountDto> accounts = accountRepository.findAllByOrderByAccountCodeAsc().stream()
-                .map(this::toTrialBalanceRow)
+        Map<String, BigDecimal> balanceByAccount = journalEntryRepository
+                .sumBalancesUntil(contableDate.plusDays(1).atStartOfDay())
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (String) row[0],
+                        row -> row[1] == null ? BigDecimal.ZERO : (BigDecimal) row[1]));
+
+        List<TrialBalanceAccountDto> accounts = accountRepository
+                .findByAccountTypeOrderByAccountCodeAsc(AccountType.DETALLE)
+                .stream()
+                .map(a -> toTrialBalanceRow(
+                        a.getAccountCode(), a.getName(), a.getAccountClass(),
+                        balanceByAccount.getOrDefault(a.getAccountCode(), BigDecimal.ZERO)))
                 .toList();
 
         BigDecimal totalDebits = accounts.stream()
@@ -130,24 +151,39 @@ public class AccountingService {
     }
 
     @Transactional(readOnly = true)
+    /**
+     * Balance de comprobacion A UNA FECHA DE CORTE. Los saldos se calculan sumando los
+     * asientos registrados hasta el final de ese dia (JournalEntryRepository
+     * .sumBalancesUntil), NO leyendo AccountingAccount.currentBalance.
+     *
+     * Antes se usaba currentBalance, lo que producia un reporte rotulado con una fecha
+     * pasada pero con las cifras del momento de consultarlo. Como runEndOfDay archiva
+     * este balance en CSV y avanza la fecha contable, ese defecto generaba registros
+     * historicos con datos que no correspondian al dia cerrado.
+     *
+     * Se listan las cuentas DETALLE (las que realmente reciben movimiento), no solo las
+     * raices: un balance de comprobacion debe permitir cuadrar cuenta por cuenta. Al
+     * agrupar unicamente por clase contable, un saldo anomalo en una cuenta quedaba
+     * compensado por otras de la misma clase y era invisible en el reporte.
+     */
     public TrialBalanceResponse structuralTrialBalance(LocalDate date) {
         LocalDate contableDate = date != null ? date : parameterService.getActiveContableDate();
 
-        Map<String, BigDecimal> balanceByClass = accountRepository
-                .findByAccountTypeOrderByAccountCodeAsc(AccountType.DETALLE)
+        // Corte inclusivo del dia: todo asiento con entryDate anterior al inicio del dia
+        // siguiente. Evita perder los asientos registrados durante la propia fecha de corte.
+        Map<String, BigDecimal> balanceByAccount = journalEntryRepository
+                .sumBalancesUntil(contableDate.plusDays(1).atStartOfDay())
                 .stream()
-                .collect(Collectors.groupingBy(
-                        AccountingAccount::getAccountClass,
-                        Collectors.reducing(BigDecimal.ZERO, AccountingAccount::getCurrentBalance, BigDecimal::add)));
+                .collect(Collectors.toMap(
+                        row -> (String) row[0],
+                        row -> row[1] == null ? BigDecimal.ZERO : (BigDecimal) row[1]));
 
         List<TrialBalanceAccountDto> accounts = accountRepository
-                .findByAccountTypeOrderByAccountCodeAsc(AccountType.ESTRUCTURAL)
+                .findByAccountTypeOrderByAccountCodeAsc(AccountType.DETALLE)
                 .stream()
-                .filter(a -> a.getParentAccountCode() == null || a.getParentAccountCode().isBlank())
-                .map(a -> {
-                    BigDecimal balance = balanceByClass.getOrDefault(a.getAccountClass(), BigDecimal.ZERO);
-                    return toTrialBalanceRow(a.getAccountCode(), a.getName(), a.getAccountClass(), balance);
-                })
+                .map(a -> toTrialBalanceRow(
+                        a.getAccountCode(), a.getName(), a.getAccountClass(),
+                        balanceByAccount.getOrDefault(a.getAccountCode(), BigDecimal.ZERO)))
                 .toList();
 
         BigDecimal totalDebits = accounts.stream()
@@ -166,11 +202,23 @@ public class AccountingService {
                 account.getAccountClass(), account.getCurrentBalance());
     }
 
+    /**
+     * El saldo llega en convencion deudora (DEBITO - CREDITO), tal como lo devuelve
+     * sumBalancesUntil. Las cuentas acreedoras (pasivo, patrimonio, ingresos) acumulan al
+     * credito, asi que su saldo natural es negativo en esa convencion y hay que invertirlo
+     * para presentarlo como saldo acreedor positivo.
+     *
+     * Un saldo con signo contrario al natural de la cuenta (un activo acreedor, por
+     * ejemplo) se muestra en la columna que le corresponde por naturaleza y en negativo,
+     * en vez de saltar a la otra columna: en el balance debe verse que esa cuenta esta
+     * invertida, no disimularse cambiandola de lado.
+     */
     private TrialBalanceAccountDto toTrialBalanceRow(String code, String name,
                                                      String accountClass, BigDecimal balance) {
         boolean esDeudora = AccountNature.fromClass(accountClass) == AccountNature.DEUDORA;
-        BigDecimal debit = esDeudora ? balance : BigDecimal.ZERO;
-        BigDecimal credit = esDeudora ? BigDecimal.ZERO : balance;
+        BigDecimal saldoNatural = esDeudora ? balance : balance.negate();
+        BigDecimal debit = esDeudora ? saldoNatural : BigDecimal.ZERO;
+        BigDecimal credit = esDeudora ? BigDecimal.ZERO : saldoNatural;
         return new TrialBalanceAccountDto(code, name, debit, credit);
     }
 
